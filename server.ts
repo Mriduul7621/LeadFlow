@@ -44,6 +44,20 @@ app.use(async (req, res, next) => {
   });
 
   // --- USERS CRUD ---
+  // Check if an ADMIN user exists in the database
+  app.get('/api/users/check-admin', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.json({ exists: false });
+    try {
+      const result = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'ADMIN'");
+      const count = parseInt(result.rows[0].count, 10);
+      res.json({ exists: count > 0 });
+    } catch (err: any) {
+      console.error('Error checking admin presence:', err);
+      res.status(500).json({ error: 'Database check failed', details: err.message });
+    }
+  });
+
   // Get all users
   app.get('/api/users', async (req, res) => {
     const pool = getPool();

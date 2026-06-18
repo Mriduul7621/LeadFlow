@@ -120,5 +120,20 @@ export const userService = {
     } catch (error) {
       console.warn('PostgreSQL delete user fallback to local db:', error);
     }
+  },
+
+  async checkAdminExists(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/users/check-admin');
+      if (res.ok) {
+        const body = await res.json();
+        return !!body.exists;
+      }
+    } catch (error) {
+      console.warn('PostgreSQL checkAdminExists failed:', error);
+    }
+    // Only fallback if there was an actual connection issue
+    const localUsers = localDb.getUsers();
+    return localUsers.some(u => u.role === 'ADMIN');
   }
 };

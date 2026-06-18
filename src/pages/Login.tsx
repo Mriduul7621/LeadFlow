@@ -84,18 +84,13 @@ export default function Login() {
 
   const checkUserCount = async () => {
     try {
-      let count = 0;
-      try {
-        const firestoreUsers = await userService.getAllUsers();
-        count += (firestoreUsers || []).length;
-      } catch (fErr) {
-        console.warn("Could not fetch online users:", fErr);
-        const localUsers = localDb.getUsers();
-        count += (localUsers || []).length;
-      }
-      setIsFirstTimeSetup(count === 0);
+      const adminExists = await userService.checkAdminExists();
+      setIsFirstTimeSetup(!adminExists);
     } catch (err) {
-      console.error("Error checking user count:", err);
+      console.error("Error checking admin existence:", err);
+      const localUsers = localDb.getUsers();
+      const hasLocalAdmin = localUsers.some(u => u.role === 'ADMIN');
+      setIsFirstTimeSetup(!hasLocalAdmin);
     } finally {
       setCheckingSetup(false);
     }
