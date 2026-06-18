@@ -1,0 +1,181 @@
+{
+  "entities": {
+    "Department": {
+      "title": "Department",
+      "description": "Organizational department structure",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique department identifier" },
+        "name": { "type": "string", "description": "Display name of the department" },
+        "createdDate": { "type": "string", "format": "date-time", "description": "Record creation timestamp" }
+      },
+      "required": ["id", "name", "createdDate"]
+    },
+    "RolePermission": {
+      "title": "RolePermission",
+      "description": "Granular dynamic role and access control permissions matrix",
+      "type": "object",
+      "properties": {
+        "roleId": { "type": "string", "description": "Unique role identifier / slug (lowercase, matches pattern)" },
+        "roleName": { "type": "string", "description": "Official layout name of the role" },
+        "isCustom": { "type": "boolean", "description": "Whether the role is custom-created" },
+        "menuAccess": { "type": "object", "description": "Key-value of navigation routes to Boolean access" },
+        "dataVisibility": { "type": "string", "enum": ["Own", "DownTeam", "FullTeam", "Organization"], "description": "Scope boundaries of query results" },
+        "actions": { "type": "object", "description": "Default action gates (view, create, edit, delete, upload)" },
+        "featurePermissions": { "type": "object", "description": "Per-feature fine-grained operational tags" }
+      },
+      "required": ["roleId", "roleName", "menuAccess", "dataVisibility", "actions"]
+    },
+    "Permissions": {
+      "title": "Permissions",
+      "description": "Role-based page access mapping with fine-grained toggles for each module",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique permission identifier (coinciding with roleId)" },
+        "roleId": { "type": "string", "description": "Target role identifier" },
+        "roleName": { "type": "string", "description": "Display name of the role" },
+        "modules": { "type": "object", "description": "Modules mapping role-based access for each page, containing fine-grained view, create, edit, delete, and upload permissions" }
+      },
+      "required": ["id", "roleId", "roleName", "modules"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Employee user profile with dynamic role, department link, and hierarchy caching attributes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique database ID" },
+        "name": { "type": "string", "description": "Full employee name" },
+        "employeeId": { "type": "string", "description": "Unique company Employee ID" },
+        "email": { "type": "string", "description": "Digital uplink email address" },
+        "contact": { "type": "string", "description": "Contact number" },
+        "role": { "type": "string", "description": "Assigned App Access Role ID" },
+        "designation": { "type": "string", "description": "Job title / Designation text" },
+        "password": { "type": "string", "description": "System operational password" },
+        "mustChangePassword": { "type": "boolean", "description": "Onboarding flag to force temporary password reset on first login" },
+        "status": { "type": "string", "enum": ["Active", "Inactive"], "description": "Active indicator" },
+        "departmentId": { "type": "string", "description": "Assigned department ID" },
+        "createdDate": { "type": "string", "format": "date-time", "description": "Record creation date" },
+        "reportingChain": { "type": "array", "description": "Cached ancestral higher Employee IDs in management reporting flow" },
+        "subordinates": { "type": "array", "description": "Cached Employee IDs directly/indirectly reporting down the vertical hierarchy" }
+      },
+      "required": ["id", "name", "employeeId", "email", "role", "status", "createdDate", "mustChangePassword"]
+    },
+    "Hierarchy": {
+      "title": "Hierarchy",
+      "description": "Vertical role layers per department that drive reporting chains",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Hierarchy department document ID" },
+        "departmentId": { "type": "string", "description": "Department relationship link ID" },
+        "layers": { 
+          "type": "array", 
+          "description": "Array of vertical reporting layers forming a tree structure. Each layer node contains a unique 'id' string, a nullable 'parentId' referencing its supervisor node, a 'roleId' identifying the department role, and 'employeeIds' listing the assigned individuals." 
+        },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last updated state" }
+      },
+      "required": ["id", "departmentId", "layers", "updatedAt"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Customer lead details with tracking, dynamic statuses, and history logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique lead ID" },
+        "creationDate": { "type": "string", "format": "date-time", "description": "Initial entry date" },
+        "assignedDate": { "type": "string", "format": "date-time", "description": "Date of latest assignment" },
+        "prospectName": { "type": "string", "description": "Prospect full name" },
+        "mobile": { "type": "string", "description": "Mobile number" },
+        "mobileNumber": { "type": "string", "description": "Alternative mobile number" },
+        "email": { "type": "string", "description": "Prospect email address" },
+        "profession": { "type": "string", "description": "Profession" },
+        "residenceAddress": { "type": "string" },
+        "officeAddress": { "type": "string" },
+        "familyMember": { "type": "string" },
+        "maritalStatus": { "type": "string" },
+        "hasChild": { "type": "boolean" },
+        "noOfChildren": { "type": "string" },
+        "area": { "type": "string" },
+        "division": { "type": "string" },
+        "district": { "type": "string" },
+        "thana": { "type": "string" },
+        "source": { "type": "string" },
+        "productName": { "type": "string" },
+        "campaignName": { "type": "string" },
+        "otherInfo": { "type": "string" },
+        "assignedTo": { "type": "string", "description": "Employee ID assigned to this lead" },
+        "assignedBy": { "type": "string", "description": "Employee ID who assigned this lead" },
+        "currentStatus": { "type": "string", "description": "Operational pipeline stage status" },
+        "projectedNCP": { "type": "number", "description": "Potential Premium Value" },
+        "collectedNCP": { "type": "number", "description": "Actual Premium Collected" },
+        "lastFollowUpDate": { "type": "string", "format": "date-time" },
+        "nextFollowUpDate": { "type": "string", "format": "date" },
+        "nextCallDate": { "type": "string", "format": "date" },
+        "meetingDate": { "type": "string", "format": "date" },
+        "sumAssured": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "creationDate", "prospectName", "mobile", "assignedTo", "currentStatus", "projectedNCP", "collectedNCP", "timestamp"]
+    },
+    "DropdownOption": {
+      "title": "DropdownOption",
+      "description": "Static drop-down parameters configuration matrix for customization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "value": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Inactive"] }
+      },
+      "required": ["id", "type", "value", "status"]
+    },
+    "SystemNotification": {
+      "title": "SystemNotification",
+      "description": "System-triggered direct notification cards for specific employees",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "Recipient Employee ID" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "leadId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "message", "leadId", "read", "date"]
+    }
+  },
+  "firestore": {
+    "departments": {
+      "schema": "Department",
+      "description": "Departments index with complete naming metadata"
+    },
+    "roles": {
+      "schema": "RolePermission",
+      "description": "Permissions registry mapping dynamic roles"
+    },
+    "permissions": {
+      "schema": "Permissions",
+      "description": "Fine-grained permissions configuration lists mapped page-by-page"
+    },
+    "users": {
+      "schema": "User",
+      "description": "Users directory with employee identity info and access configurations"
+    },
+    "hierarchies": {
+      "schema": "Hierarchy",
+      "description": "Vertical hierarchy order maps mapped department-by-department"
+    },
+    "leads": {
+      "schema": "Lead",
+      "description": "Leads repository containing core pipeline records"
+    },
+    "options": {
+      "schema": "DropdownOption",
+      "description": "Configurable parameters for drop-down matrices"
+    },
+    "notifications": {
+      "schema": "SystemNotification",
+      "description": "Employee-specific notifications channel list"
+    }
+  }
+}

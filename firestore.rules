@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- DEPARTMENTS COLLECTION ---
+    match /departments/{departmentId} {
+      allow read, write: if true;
+    }
+
+    // --- ROLES COLLECTION ---
+    match /roles/{roleId} {
+      allow read, write: if true;
+    }
+
+    // --- FINE-GRAINED PERMISSIONS COLLECTION ---
+    match /permissions/{permissionId} {
+      allow read, write: if true;
+    }
+
+    // --- USER PROFILE COLLECTION ---
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // --- HIERARCHIES COLLECTION ---
+    match /hierarchies/{hierarchyId} {
+      allow read, write: if true;
+    }
+
+    // --- LEADS COLLECTION ---
+    match /leads/{leadId} {
+      allow read, write: if true;
+    }
+
+    // --- TEAMS COLLECTION ---
+    match /teams/{teamId} {
+      allow read, write: if true;
+    }
+
+    // --- DROPDOWN OPTIONS COLLECTION ---
+    match /options/{optionId} {
+      allow read, write: if true;
+    }
+
+    // --- SYSTEM NOTIFICATIONS COLLECTION ---
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+  }
+}
