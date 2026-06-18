@@ -3,7 +3,7 @@ import { User, Lead, DropdownOption } from '../types';
 import { toast } from 'sonner';
 
 export const syncService = {
-  async syncToFirestore() {
+  async syncToDatabase() {
     try {
       console.log('🔄 Initiating Local-to-PostgreSQL Database Synchronization...');
 

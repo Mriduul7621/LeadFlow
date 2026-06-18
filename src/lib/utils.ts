@@ -15,7 +15,7 @@ export enum OperationType {
   WRITE = 'write',
 }
 
-interface FirestoreErrorInfo {
+interface DatabaseErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
@@ -25,9 +25,9 @@ interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleDatabaseError(error: unknown, operationType: OperationType, path: string | null) {
   const currentUser = useAuthStore.getState().user;
-  const errInfo: FirestoreErrorInfo = {
+  const errInfo: DatabaseErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
       userId: currentUser?.id,

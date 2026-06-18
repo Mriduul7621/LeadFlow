@@ -387,7 +387,7 @@ export default function UserManagement() {
       toast.success('Access configuration matrix updated successfully.');
       await loadAllOperationalData();
     } catch (err) {
-      toast.error('Matrix saving encountered Firestore restrictions.');
+      toast.error('Matrix saving encountered PostgreSQL restrictions.');
     }
   };
 
@@ -498,7 +498,7 @@ export default function UserManagement() {
       setIsUserModalOpen(false);
       await loadAllOperationalData();
     } catch (err) {
-      toast.error('Uplink failed: Check Firestore security configuration.');
+      toast.error('Uplink failed: Check PostgreSQL database connection configuration.');
     }
   };
 

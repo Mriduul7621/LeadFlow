@@ -123,7 +123,7 @@ export default function Login() {
       // 1. Create in local state database first
       localDb.createUser(newUser);
 
-      // 2. Synchronize to Firestore
+      // 2. Synchronize to PostgreSQL Cloud
       try {
         await userService.createUser(newUser);
       } catch (fErr) {
@@ -133,7 +133,7 @@ export default function Login() {
       // 3. Authenticate and log in
       login(newUser, false);
       toast.success("Super Admin console initialized successfully!");
-      syncService.syncToFirestore();
+      syncService.syncToDatabase();
       navigate('/');
     } catch (err) {
       console.error("Super Admin setup failed:", err);
@@ -169,23 +169,23 @@ export default function Login() {
           localDb.createUser(masterAdmin);
         }
 
-        // Parallel re-write or seed to Firestore
+        // Parallel re-write or seed to PostgreSQL Cloud
         try {
           await userService.createUser(masterAdmin);
         } catch (fErr) {
-          console.warn("Could not seed online Admin in Firestore:", fErr);
+          console.warn("Could not seed online Admin in cloud:", fErr);
         }
 
         login(masterAdmin, false);
         toast.success("Master Admin Protocol Authenticated.");
-        syncService.syncToFirestore();
+        syncService.syncToDatabase();
         navigate('/');
         return;
       }
 
       let matchedUser = null;
 
-      // 1. First, search for user in Firestore with robust case-insensitive comparison
+      // 1. First, search for user in Cloud Database with robust case-insensitive comparison
       try {
         const firestoreUsers = await userService.getAllUsers();
         if (firestoreUsers && firestoreUsers.length > 0) {
@@ -197,10 +197,10 @@ export default function Login() {
           });
         }
       } catch (err) {
-        console.warn('Firestore user fetch failed or offline; trying local storage lookup:', err);
+        console.warn('Cloud Database user fetch failed or offline; trying local storage lookup:', err);
       }
 
-      // 2. Fall back to localDb search if Firestore fails or doesn't have the user yet
+      // 2. Fall back to localDb search if Cloud Database fails or doesn't have the user yet
       if (!matchedUser) {
         const localUsers = localDb.getUsers();
         matchedUser = localUsers.find(u => {
@@ -230,7 +230,7 @@ export default function Login() {
             try {
               await userService.updateUser(matchedUser.id, { password: enteredPassword });
             } catch (err) {
-              console.warn("Could not align Firestore password with local authentic credentials:", err);
+              console.warn("Could not align cloud database password with local authentic credentials:", err);
             }
           } else {
             toast.error('Authentication failed: Invalid credentials or password.');
@@ -251,8 +251,8 @@ export default function Login() {
         login(matchedUser, false);
         toast.success(`Welcome back, ${matchedUser.name}!`);
         
-        // Push any local storage offline data into Firestore synchronously
-        syncService.syncToFirestore();
+        // Push any local storage offline data into PostgreSQL Cloud Database synchronously
+        syncService.syncToDatabase();
         navigate('/');
       } else {
         toast.error('Authentication failed: Employee ID does not exist in the system. Please ask an Administrator to authorize your account.');

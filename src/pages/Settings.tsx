@@ -506,7 +506,7 @@ export default function Settings() {
                         onClick={() => {
                           const targetState = !isOfflineMode;
                           useAuthStore.getState().setOfflineMode(targetState);
-                          toast.success(targetState ? "Offline Mode Enabled: Data saved locally." : "Online Mode Enabled: Live Firestore connection.");
+                          toast.success(targetState ? "Offline Mode Enabled: Data saved locally." : "Online Mode Enabled: Live Neon PostgreSQL connection.");
                         }}
                         className={cn(
                           "px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all shadow-md border",
@@ -520,13 +520,13 @@ export default function Settings() {
                     <div className="space-y-4">
                       <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500">Database Synchronization Sync</h4>
                       <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider leading-relaxed">
-                        Manually upload any locally registered lead profiles, user credentials, and status logs on this device/browser into the secure cloud Firestore database.
+                        Manually upload any locally registered lead profiles, user credentials, and status logs on this device/browser into the secure cloud Neon PostgreSQL database.
                       </p>
                       <button
                         onClick={async () => {
                           setLoading(true);
                           try {
-                            const result = await syncService.syncToFirestore();
+                            const result = await syncService.syncToDatabase();
                             if (result) {
                               toast.success("Synchronized local modifications to live database successfully!");
                             } else {

@@ -113,7 +113,7 @@ export default function App() {
     // 1. Trigger background data synchronization if authenticated
     const state = useAuthStore.getState();
     if (state.isAuthenticated && state.user) {
-      syncService.syncToFirestore();
+      syncService.syncToDatabase();
     }
 
     // 2. Manage authentication state changes

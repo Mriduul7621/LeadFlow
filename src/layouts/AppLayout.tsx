@@ -233,7 +233,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setIsSyncing(true);
     toast.loading("Initiating Cloud Uplink Sync...", { id: "sync-toast" });
     try {
-      const result = await syncService.syncToFirestore();
+      const result = await syncService.syncToDatabase();
       if (result && result.success) {
         const { usersSynced, leadsSynced, optionsSynced } = result;
         if (usersSynced > 0 || leadsSynced > 0 || optionsSynced > 0) {
