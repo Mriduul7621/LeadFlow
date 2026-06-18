@@ -11,14 +11,24 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
-  // Initialize the database tables if connected to Neon DB
-  await initializeDatabase();
+app.use(express.json({ limit: '50mb' }));
 
-  app.use(express.json({ limit: '50mb' }));
+// Lazy Database Initializer Middleware for Serverless Compatibility
+let dbInitialized = false;
+app.use(async (req, res, next) => {
+  if (!dbInitialized) {
+    try {
+      await initializeDatabase();
+      dbInitialized = true;
+    } catch (err) {
+      console.error('⚠️ Database initialization failed:', err);
+    }
+  }
+  next();
+});
 
   // ==========================================
   // Neon PostgreSQL API REST Routes (CRUD)
@@ -841,24 +851,28 @@ async function startServer() {
   // ==========================================
   // Vite HMR and Single-Page Application (SPA) Serving
   // ==========================================
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
+    }).then((vite) => {
+      app.use(vite.middlewares);
+      console.log('⚡ Vite development middleware applied.');
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Full-Stack application running on http://0.0.0.0:${PORT}`);
+      });
+    }).catch((err) => {
+      console.error('Failed to create Vite server:', err);
     });
-    app.use(vite.middlewares);
-    console.log('⚡ Vite development middleware applied.');
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Full-Stack application running on http://0.0.0.0:${PORT}`);
+    });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Full-Stack application running on http://0.0.0.0:${PORT}`);
-  });
-}
-
-startServer();
+export default app;
