@@ -250,6 +250,118 @@ export const syncService = {
         console.warn('⚠️ PostgreSQL Options Sync warning:', err);
       }
 
+      // ==========================================
+      // 4. Bidirectional Departments Synchronizer
+      // ==========================================
+      let departmentsSynced = 0;
+      let departmentsDownloaded = 0;
+      try {
+        const localDeptStr = localStorage.getItem('lf_local_departments');
+        const localDepts = localDeptStr ? JSON.parse(localDeptStr) : [];
+        const deptSyncRes = await fetch('/api/departments/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            localDepartments: localDepts,
+            deletedDepartmentIds: []
+          })
+        });
+        if (deptSyncRes.ok) {
+          const deptData = await deptSyncRes.json();
+          if (deptData.success && Array.isArray(deptData.cloudDepartments)) {
+            departmentsSynced = deptData.processed || 0;
+            localStorage.setItem('lf_local_departments', JSON.stringify(deptData.cloudDepartments));
+            departmentsDownloaded = Math.max(0, deptData.cloudDepartments.length - localDepts.length);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ PostgreSQL Departments Sync warning:', err);
+      }
+
+      // ==========================================
+      // 5. Bidirectional Roles Synchronizer
+      // ==========================================
+      let rolesSynced = 0;
+      let rolesDownloaded = 0;
+      try {
+        const localRolesStr = localStorage.getItem('lf_local_roles_permissions');
+        const localRoles = localRolesStr ? JSON.parse(localRolesStr) : [];
+        const roleSyncRes = await fetch('/api/roles/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            localRoles: localRoles,
+            deletedRoleIds: []
+          })
+        });
+        if (roleSyncRes.ok) {
+          const roleData = await roleSyncRes.json();
+          if (roleData.success && Array.isArray(roleData.cloudRoles)) {
+            rolesSynced = roleData.processed || 0;
+            localStorage.setItem('lf_local_roles_permissions', JSON.stringify(roleData.cloudRoles));
+            rolesDownloaded = Math.max(0, roleData.cloudRoles.length - localRoles.length);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ PostgreSQL Roles Sync warning:', err);
+      }
+
+      // ==========================================
+      // 6. Bidirectional Teams Synchronizer
+      // ==========================================
+      let teamsSynced = 0;
+      let teamsDownloaded = 0;
+      try {
+        const localTeamsStr = localStorage.getItem('lf_local_teams');
+        const localTeams = localTeamsStr ? JSON.parse(localTeamsStr) : [];
+        const teamSyncRes = await fetch('/api/teams/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            localTeams: localTeams,
+            deletedTeamIds: []
+          })
+        });
+        if (teamSyncRes.ok) {
+          const teamData = await teamSyncRes.json();
+          if (teamData.success && Array.isArray(teamData.cloudTeams)) {
+            teamsSynced = teamData.processed || 0;
+            localStorage.setItem('lf_local_teams', JSON.stringify(teamData.cloudTeams));
+            teamsDownloaded = Math.max(0, teamData.cloudTeams.length - localTeams.length);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ PostgreSQL Teams Sync warning:', err);
+      }
+
+      // ==========================================
+      // 7. Bidirectional Hierarchies Synchronizer
+      // ==========================================
+      let hierarchiesSynced = 0;
+      let hierarchiesDownloaded = 0;
+      try {
+        const localHierStr = localStorage.getItem('lf_local_hierarchies');
+        const localHiers = localHierStr ? JSON.parse(localHierStr) : [];
+        const hierSyncRes = await fetch('/api/hierarchies/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            localHierarchies: localHiers,
+            deletedHierarchyIds: []
+          })
+        });
+        if (hierSyncRes.ok) {
+          const hierData = await hierSyncRes.json();
+          if (hierData.success && Array.isArray(hierData.cloudHierarchies)) {
+            hierarchiesSynced = hierData.processed || 0;
+            localStorage.setItem('lf_local_hierarchies', JSON.stringify(hierData.cloudHierarchies));
+            hierarchiesDownloaded = Math.max(0, hierData.cloudHierarchies.length - localHiers.length);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ PostgreSQL Hierarchies Sync warning:', err);
+      }
+
       // Save sync registration cache tracks back to localStorage
       localStorage.setItem('lf_synced_user_ids', JSON.stringify(Array.from(syncedUserIds)));
       localStorage.setItem('lf_synced_lead_ids', JSON.stringify(Array.from(syncedLeadIds)));
@@ -261,9 +373,17 @@ export const syncService = {
         leadsSynced > 0 || 
         leadsDownloaded > 0 || 
         optionsSynced > 0 || 
-        optionsDownloaded > 0
+        optionsDownloaded > 0 ||
+        departmentsSynced > 0 ||
+        departmentsDownloaded > 0 ||
+        rolesSynced > 0 ||
+        rolesDownloaded > 0 ||
+        teamsSynced > 0 ||
+        teamsDownloaded > 0 ||
+        hierarchiesSynced > 0 ||
+        hierarchiesDownloaded > 0
       ) {
-        toast.success(`Supabase Synced! Uploaded updates and downloaded cloud modifications successfully. ✨`);
+        toast.success(`Supabase Synced! Uploaded updates and synchronized all records successfully! ✨`);
       }
 
       return {
@@ -271,9 +391,17 @@ export const syncService = {
         usersSynced,
         leadsSynced,
         optionsSynced,
+        departmentsSynced,
+        rolesSynced,
+        teamsSynced,
+        hierarchiesSynced,
         usersDownloaded,
         leadsDownloaded,
-        optionsDownloaded
+        optionsDownloaded,
+        departmentsDownloaded,
+        rolesDownloaded,
+        teamsDownloaded,
+        hierarchiesDownloaded
       };
     } catch (err) {
       console.error('Database Sync Error:', err);

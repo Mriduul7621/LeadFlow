@@ -572,6 +572,46 @@ app.use(async (req, res, next) => {
     }
   });
 
+  // Departments sync
+  app.post('/api/departments/sync', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.json({ success: true, processed: 0 });
+    try {
+      const { localDepartments, deletedDepartmentIds } = req.body;
+      let syncCount = 0;
+
+      if (Array.isArray(deletedDepartmentIds) && deletedDepartmentIds.length > 0) {
+        await pool.query('DELETE FROM departments WHERE id = ANY($1)', [deletedDepartmentIds]);
+      }
+
+      if (Array.isArray(localDepartments)) {
+        for (const dept of localDepartments) {
+          const { id, name, createdDate } = dept;
+          const query = `
+            INSERT INTO departments (id, name, created_date)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              created_date = EXCLUDED.created_date
+          `;
+          await pool.query(query, [id, name, createdDate]);
+          syncCount++;
+        }
+      }
+
+      const latest = await pool.query('SELECT * FROM departments');
+      const formatted = latest.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        createdDate: row.created_date
+      }));
+      res.json({ success: true, processed: syncCount, cloudDepartments: formatted });
+    } catch (err: any) {
+      console.error('Departments sync failed:', err);
+      res.status(500).json({ error: 'Departments sync failed', details: err.message });
+    }
+  });
+
 
   // --- HIERARCHIES CRUD ---
   // Get hierarchies
@@ -621,6 +661,55 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Error saving hierarchy:', err);
       res.status(500).json({ error: 'Save failed' });
+    }
+  });
+
+  // Hierarchies sync
+  app.post('/api/hierarchies/sync', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.json({ success: true, processed: 0 });
+    try {
+      const { localHierarchies, deletedHierarchyIds } = req.body;
+      let syncCount = 0;
+
+      if (Array.isArray(deletedHierarchyIds) && deletedHierarchyIds.length > 0) {
+        await pool.query('DELETE FROM hierarchies WHERE id = ANY($1)', [deletedHierarchyIds]);
+      }
+
+      if (Array.isArray(localHierarchies)) {
+        for (const hier of localHierarchies) {
+          const { id, departmentId, layers, updatedAt } = hier;
+          const layersJson = JSON.stringify(layers || []);
+          const query = `
+            INSERT INTO hierarchies (id, department_id, layers, updated_at)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE SET
+              department_id = EXCLUDED.department_id,
+              layers = EXCLUDED.layers,
+              updated_at = EXCLUDED.updated_at
+          `;
+          await pool.query(query, [id, departmentId, layersJson, updatedAt]);
+          syncCount++;
+        }
+      }
+
+      const latest = await pool.query('SELECT * FROM hierarchies');
+      const formatted = latest.rows.map(row => {
+        let layers = [];
+        try {
+          layers = row.layers ? JSON.parse(row.layers) : [];
+        } catch (e) {}
+        return {
+          id: row.id,
+          departmentId: row.department_id,
+          layers,
+          updatedAt: row.updated_at
+        };
+      });
+      res.json({ success: true, processed: syncCount, cloudHierarchies: formatted });
+    } catch (err: any) {
+      console.error('Hierarchies sync failed:', err);
+      res.status(500).json({ error: 'Hierarchies sync failed', details: err.message });
     }
   });
 
@@ -701,6 +790,69 @@ app.use(async (req, res, next) => {
     }
   });
 
+  // Roles sync
+  app.post('/api/roles/sync', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.json({ success: true, processed: 0 });
+    try {
+      const { localRoles, deletedRoleIds } = req.body;
+      let syncCount = 0;
+
+      if (Array.isArray(deletedRoleIds) && deletedRoleIds.length > 0) {
+        await pool.query('DELETE FROM roles WHERE role_id = ANY($1)', [deletedRoleIds]);
+      }
+
+      if (Array.isArray(localRoles)) {
+        for (const role of localRoles) {
+          const { roleId, roleName, menuAccess, dataVisibility, actions, featurePermissions } = role;
+          const menuAccessJson = JSON.stringify(menuAccess || {});
+          const actionsJson = JSON.stringify(actions || {});
+          const featurePermissionsJson = JSON.stringify(featurePermissions || {});
+          const query = `
+            INSERT INTO roles (role_id, role_name, menu_access, data_visibility, actions, feature_permissions)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (role_id) DO UPDATE SET
+              role_name = EXCLUDED.role_name,
+              menu_access = EXCLUDED.menu_access,
+              data_visibility = EXCLUDED.data_visibility,
+              actions = EXCLUDED.actions,
+              feature_permissions = EXCLUDED.feature_permissions
+          `;
+          await pool.query(query, [roleId, roleName, menuAccessJson, dataVisibility, actionsJson, featurePermissionsJson]);
+          syncCount++;
+        }
+      }
+
+      const latest = await pool.query('SELECT * FROM roles');
+      const formatted = latest.rows.map(row => {
+        let menuAccess = {};
+        let actions = {};
+        let featurePermissions = {};
+        try {
+          menuAccess = row.menu_access ? JSON.parse(row.menu_access) : {};
+        } catch (e) {}
+        try {
+          actions = row.actions ? JSON.parse(row.actions) : {};
+        } catch (e) {}
+        try {
+          featurePermissions = row.feature_permissions ? JSON.parse(row.feature_permissions) : {};
+        } catch (e) {}
+        return {
+          roleId: row.role_id,
+          roleName: row.role_name,
+          menuAccess,
+          dataVisibility: row.data_visibility,
+          actions,
+          featurePermissions
+        };
+      });
+      res.json({ success: true, processed: syncCount, cloudRoles: formatted });
+    } catch (err: any) {
+      console.error('Roles sync failed:', err);
+      res.status(500).json({ error: 'Roles sync failed', details: err.message });
+    }
+  });
+
 
   // --- TEAMS CRUD ---
   // Get all teams
@@ -767,6 +919,61 @@ app.use(async (req, res, next) => {
     } catch (err) {
       console.error('Error deleting team:', err);
       res.status(500).json({ error: 'Delete failed' });
+    }
+  });
+
+  // Teams sync
+  app.post('/api/teams/sync', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.json({ success: true, processed: 0 });
+    try {
+      const { localTeams, deletedTeamIds } = req.body;
+      let syncCount = 0;
+
+      if (Array.isArray(deletedTeamIds) && deletedTeamIds.length > 0) {
+        await pool.query('DELETE FROM teams WHERE id = ANY($1)', [deletedTeamIds]);
+      }
+
+      if (Array.isArray(localTeams)) {
+        for (const team of localTeams) {
+          const { id, name, leaderId, leaderName, memberIds, createdDate, departmentId } = team;
+          const memberIdsJson = JSON.stringify(memberIds || []);
+          const query = `
+            INSERT INTO teams (id, name, leader_id, leader_name, member_ids, created_date, department_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              leader_id = EXCLUDED.leader_id,
+              leader_name = EXCLUDED.leader_name,
+              member_ids = EXCLUDED.member_ids,
+              created_date = EXCLUDED.created_date,
+              department_id = EXCLUDED.department_id
+          `;
+          await pool.query(query, [id, name, leaderId, leaderName, memberIdsJson, createdDate, departmentId]);
+          syncCount++;
+        }
+      }
+
+      const latest = await pool.query('SELECT * FROM teams');
+      const formatted = latest.rows.map(row => {
+        let memberIds = [];
+        try {
+          memberIds = row.member_ids ? JSON.parse(row.member_ids) : [];
+        } catch (e) {}
+        return {
+          id: row.id,
+          name: row.name,
+          leaderId: row.leader_id,
+          leaderName: row.leader_name,
+          memberIds,
+          createdDate: row.created_date,
+          departmentId: row.department_id
+        };
+      });
+      res.json({ success: true, processed: syncCount, cloudTeams: formatted });
+    } catch (err: any) {
+      console.error('Teams sync failed:', err);
+      res.status(500).json({ error: 'Teams sync failed', details: err.message });
     }
   });
 

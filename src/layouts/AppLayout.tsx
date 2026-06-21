@@ -235,9 +235,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     try {
       const result = await syncService.syncToDatabase();
       if (result && result.success) {
-        const { usersSynced, leadsSynced, optionsSynced } = result;
-        if (usersSynced > 0 || leadsSynced > 0 || optionsSynced > 0) {
-          toast.success(`Uplink Synchronized! Synced ${usersSynced} users, ${leadsSynced} leads, ${optionsSynced} configs.`, { id: "sync-toast" });
+        const { usersSynced, leadsSynced, optionsSynced, departmentsSynced, rolesSynced, teamsSynced, hierarchiesSynced } = result;
+        const total = (usersSynced || 0) + (leadsSynced || 0) + (optionsSynced || 0) + (departmentsSynced || 0) + (rolesSynced || 0) + (teamsSynced || 0) + (hierarchiesSynced || 0);
+        if (total > 0) {
+          toast.success(`Uplink Synchronized! Synced ${usersSynced || 0} users, ${leadsSynced || 0} leads, ${departmentsSynced || 0} depts, ${rolesSynced || 0} roles, ${teamsSynced || 0} teams, ${optionsSynced || 0} configs.`, { id: "sync-toast" });
         } else {
           toast.success("Uplink Synchronized! Cloud databases are fully up to date.", { id: "sync-toast" });
         }
