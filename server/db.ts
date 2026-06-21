@@ -5,12 +5,15 @@ let pool: pg.Pool | null = null;
 
 export function getPool(): pg.Pool | null {
   if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
+    const rawConnectionString = process.env.DATABASE_URL;
+    if (!rawConnectionString) {
       console.warn("⚠️ DATABASE_URL environment variable is not defined. Supabase PostgreSQL is not connected. Fallback to in-memory/local mock mode.");
       return null;
     }
     try {
+      // Strip any conflicting sslmode=... parameters to prevent pg-connection-string from overriding our ssl option
+      const connectionString = rawConnectionString.replace(/[\?&]sslmode=[^&]+/g, '');
+      
       pool = new Pool({
         connectionString,
         ssl: {
