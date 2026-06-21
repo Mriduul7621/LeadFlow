@@ -12,6 +12,7 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
   {
     roleId: 'ADMIN',
     roleName: 'System Admin',
+    isCustom: false,
     menuAccess: {
       '/': true,
       '/leads/new': true,
@@ -30,6 +31,138 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
     dataVisibility: 'Organization',
     actions: { view: true, create: true, edit: true, delete: true, approve: true, upload: true }
   },
+  {
+    roleId: 'BH',
+    roleName: 'Business Head',
+    isCustom: false,
+    menuAccess: {
+      '/': true,
+      '/leads/new': false,
+      '/leads/upload': false,
+      '/leads/all': true,
+      '/leads': true,
+      '/execution-intelligence': true,
+      '/ncp-progress': true,
+      '/trend-charts': true,
+      '/campaign-breakdown': true,
+      '/follow-up': true,
+      '/team': true,
+      '/users': false,
+      '/settings': false
+    },
+    dataVisibility: 'Organization',
+    actions: { view: true, create: false, edit: true, delete: false, approve: true, upload: false }
+  },
+  {
+    roleId: 'ASM',
+    roleName: 'Area Sales Manager',
+    isCustom: false,
+    menuAccess: {
+      '/': true,
+      '/leads/new': false,
+      '/leads/upload': false,
+      '/leads/all': true,
+      '/leads': true,
+      '/execution-intelligence': true,
+      '/ncp-progress': true,
+      '/trend-charts': true,
+      '/campaign-breakdown': true,
+      '/follow-up': true,
+      '/team': true,
+      '/users': false,
+      '/settings': false
+    },
+    dataVisibility: 'FullTeam',
+    actions: { view: true, create: false, edit: true, delete: false, approve: true, upload: false }
+  },
+  {
+    roleId: 'BDM',
+    roleName: 'Business Development Manager',
+    isCustom: false,
+    menuAccess: {
+      '/': true,
+      '/leads/new': false,
+      '/leads/upload': false,
+      '/leads/all': true,
+      '/leads': true,
+      '/execution-intelligence': true,
+      '/ncp-progress': true,
+      '/trend-charts': true,
+      '/campaign-breakdown': true,
+      '/follow-up': true,
+      '/team': true,
+      '/users': false,
+      '/settings': false
+    },
+    dataVisibility: 'FullTeam',
+    actions: { view: true, create: false, edit: true, delete: false, approve: true, upload: false }
+  },
+  {
+    roleId: 'RM',
+    roleName: 'Relationship Manager',
+    isCustom: false,
+    menuAccess: {
+      '/': true,
+      '/leads/new': false,
+      '/leads/upload': false,
+      '/leads/all': true,
+      '/leads': true,
+      '/execution-intelligence': false,
+      '/ncp-progress': true,
+      '/trend-charts': true,
+      '/campaign-breakdown': true,
+      '/follow-up': true,
+      '/team': true,
+      '/users': false,
+      '/settings': false
+    },
+    dataVisibility: 'DownTeam',
+    actions: { view: true, create: false, edit: true, delete: false, approve: true, upload: false }
+  },
+  {
+    roleId: 'BE',
+    roleName: 'Business Executive',
+    isCustom: false,
+    menuAccess: {
+      '/': true,
+      '/leads/new': true,
+      '/leads/upload': false,
+      '/leads/all': true,
+      '/leads': true,
+      '/execution-intelligence': false,
+      '/ncp-progress': true,
+      '/trend-charts': false,
+      '/campaign-breakdown': false,
+      '/follow-up': true,
+      '/team': false,
+      '/users': false,
+      '/settings': false
+    },
+    dataVisibility: 'Own',
+    actions: { view: true, create: true, edit: true, delete: false, approve: false, upload: false }
+  },
+  {
+    roleId: 'RO',
+    roleName: 'Relationship Officer',
+    isCustom: false,
+    menuAccess: {
+      '/': true,
+      '/leads/new': true,
+      '/leads/upload': false,
+      '/leads/all': true,
+      '/leads': true,
+      '/execution-intelligence': false,
+      '/ncp-progress': true,
+      '/trend-charts': false,
+      '/campaign-breakdown': false,
+      '/follow-up': true,
+      '/team': false,
+      '/users': false,
+      '/settings': false
+    },
+    dataVisibility: 'Own',
+    actions: { view: true, create: true, edit: true, delete: false, approve: false, upload: false }
+  }
 ];
 
 export function ensureFeaturePermissions(role: RolePermission): RolePermission {
@@ -75,11 +208,39 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
         });
       });
     } else {
-      // Clear all sub features by default for non-admin custom roles
+      // Dynamically initialize values according to role menuAccess & actions boundaries
       Object.keys(f).forEach(feat => {
-        f[feat].view = false;
+        let route = '';
+        if (feat === 'dashboard') route = '/';
+        else if (feat === 'lead_generate') route = '/leads/new';
+        else if (feat === 'lead_upload') route = '/leads/upload';
+        else if (feat === 'lead_tracking') route = '/leads';
+        else if (feat === 'execution_intelligence') route = '/execution-intelligence';
+        else if (feat === 'ncp_progress') route = '/ncp-progress';
+        else if (feat === 'trend_charts') route = '/trend-charts';
+        else if (feat === 'campaign_breakdown') route = '/campaign-breakdown';
+        else if (feat === 'follow_up_strategy') route = '/follow-up';
+        else if (feat === 'team_progress') route = '/team';
+        else if (feat === 'user_management') route = '/users';
+
+        const isRouteEnabled = role.menuAccess?.[route] ?? false;
+        f[feat].view = isRouteEnabled;
+
         Object.keys(f[feat]).forEach(subK => {
-          if (subK !== 'view') f[feat][subK] = false;
+          if (subK === 'view') return;
+          if (feat === 'lead_generate' && subK === 'create') {
+            f[feat][subK] = role.actions?.create ?? false;
+          } else if (feat === 'lead_upload' && subK === 'upload') {
+            f[feat][subK] = role.actions?.upload ?? false;
+          } else if (feat === 'lead_upload' && subK === 'delete') {
+            f[feat][subK] = role.actions?.delete ?? false;
+          } else if (feat === 'lead_tracking' && subK === 'status_update') {
+            f[feat][subK] = role.actions?.edit ?? false;
+          } else if (feat === 'user_management') {
+            f[feat][subK] = false;
+          } else {
+            f[feat][subK] = isRouteEnabled;
+          }
         });
       });
     }
@@ -103,21 +264,13 @@ export const adminService = {
   // --- ROLES & PERMISSIONS WORKSPACE ---
   async getRoles(): Promise<RolePermission[]> {
     try {
-      const defaultRolesToPurge = ['RO', 'RM', 'ASM', 'BDM', 'BE', 'BH', 'ro', 'rm', 'asm', 'bdm', 'be', 'bh'];
       const data = localStorage.getItem(KEYS.ROLES);
       let localRoles: RolePermission[] = data ? JSON.parse(data) : [];
-      
-      // Filter default ones to purge
       let changed = false;
-      const initialLength = localRoles.length;
-      localRoles = localRoles.filter(r => !defaultRolesToPurge.includes(r.roleId));
-      if (localRoles.length !== initialLength) {
-        changed = true;
-      }
 
-      // Seed ADMIN built-in default if not present
+      // Seed core built-in defaults if not present
       DEFAULT_ROLE_PERMISSIONS.forEach(def => {
-        if (!localRoles.some(r => r.roleId === def.roleId)) {
+        if (!localRoles.some(r => r.roleId.toUpperCase() === def.roleId.toUpperCase())) {
           localRoles.push(def);
           changed = true;
         }
@@ -128,14 +281,10 @@ export const adminService = {
       const res = await fetch('/api/roles');
       if (res.ok) {
         const cloudRoles = await res.json();
-        
         let mergedChanged = false;
         for (const cr of cloudRoles) {
-          if (defaultRolesToPurge.includes(cr.roleId)) {
-            continue;
-          }
           const finalizedCr = ensureFeaturePermissions(cr);
-          const idx = localRoles.findIndex(lr => lr.roleId === finalizedCr.roleId);
+          const idx = localRoles.findIndex(lr => lr.roleId.toUpperCase() === finalizedCr.roleId.toUpperCase());
           if (idx === -1) {
             localRoles.push(finalizedCr);
             mergedChanged = true;
@@ -149,15 +298,12 @@ export const adminService = {
           localStorage.setItem(KEYS.ROLES, JSON.stringify(localRoles));
         }
       }
-      return localRoles.filter(r => !defaultRolesToPurge.includes(r.roleId));
+      return localRoles;
     } catch (error) {
       console.warn('PostgreSQL fetch roles fallback to local cache:', error);
       const data = localStorage.getItem(KEYS.ROLES);
       const outputRoles = data ? JSON.parse(data) : DEFAULT_ROLE_PERMISSIONS;
-      const defaultRolesToPurge = ['RO', 'RM', 'ASM', 'BDM', 'BE', 'BH', 'ro', 'rm', 'asm', 'bdm', 'be', 'bh'];
-      return outputRoles
-        .filter((r: RolePermission) => !defaultRolesToPurge.includes(r.roleId))
-        .map(ensureFeaturePermissions);
+      return outputRoles.map(ensureFeaturePermissions);
     }
   },
 

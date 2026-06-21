@@ -26,7 +26,8 @@ import {
   Lock,
   Save,
   ChevronDown,
-  Check
+  Check,
+  ArrowLeft
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -176,6 +177,7 @@ export default function UserManagement() {
     upload: false
   });
   const [roleFormFeatures, setRoleFormFeatures] = useState<Record<string, Record<string, boolean>>>({});
+  const [showRoleForm, setShowRoleForm] = useState(false);
 
   // ----------------------------------------------------
   // STEP 3 STATE: USER REGISTER RENDER
@@ -220,9 +222,6 @@ export default function UserManagement() {
 
       const accessRoles = await adminService.getRoles();
       setRoles(accessRoles);
-      if (accessRoles.length > 0 && !selectedRole) {
-        applyRoleToForm(accessRoles[0]);
-      }
 
       const hiers = await orgService.getHierarchies();
       setHierarchies(hiers);
@@ -386,6 +385,7 @@ export default function UserManagement() {
 
       toast.success('Access configuration matrix updated successfully.');
       await loadAllOperationalData();
+      setShowRoleForm(false);
     } catch (err) {
       toast.error('Matrix saving encountered PostgreSQL restrictions.');
     }
@@ -394,7 +394,7 @@ export default function UserManagement() {
   const handleDeleteRole = async (slug: string) => {
     if (slug === 'admin' || slug === 'ADMIN') {
       toast.error('The default administration access layer cannot be soft-purged.');
-      return;
+      return false;
     }
     if (confirm(`Do you wish to delete the custom role: ${slug}?`)) {
       try {
@@ -402,10 +402,13 @@ export default function UserManagement() {
         toast.success('Custom security configuration purged.');
         setSelectedRole(null);
         await loadAllOperationalData();
+        return true;
       } catch (e) {
         toast.error('Purge routine failed.');
+        return false;
       }
     }
+    return false;
   };
 
   // ----------------------------------------------------
@@ -992,246 +995,350 @@ export default function UserManagement() {
               STEP 2: CUSTOM ROLE PERMISSIONS COMPOSER
               ---------------------------------------------------- */}
           {activeStep === 2 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Left sidebar: Roles listing */}
-              <div className="lg:col-span-4 bg-[#FBFAF8] border border-slate-200 p-6 rounded-sm space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-[#978C21]">App Roles Registry</h3>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Dynamic configuration blocks</p>
-                  </div>
-                  <button
-                    onClick={handleCreateNewRoleEmpty}
-                    className="p-2 bg-[#978C21]/10 text-[#978C21] hover:bg-[#978C21] hover:text-white transition-colors"
-                    title="Declare Custom Role"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto">
-                  {roles.map((r) => (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+              {!showRoleForm ? (
+                /* Pure Overview: Elegant grid of all corporate roles available */
+                <div className="bg-[#FBFAF8] border border-slate-200 p-6 rounded-sm space-y-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-150">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-[#978C21]">Corporate Roles Registry</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                        Inspect active organizational clearance levels and customize horizontal authorization layers
+                      </p>
+                    </div>
                     <button
-                      key={r.roleId}
-                      onClick={() => applyRoleToForm(r)}
-                      className={cn(
-                        "w-full px-4 py-3.5 text-left flex items-center justify-between transition-all group border-l-2 cursor-pointer",
-                        selectedRole?.roleId === r.roleId 
-                          ? "bg-white border-[#978C21] font-black" 
-                          : "border-transparent hover:bg-white text-slate-500 hover:text-slate-800"
-                      )}
+                      onClick={() => {
+                        handleCreateNewRoleEmpty();
+                        setShowRoleForm(true);
+                      }}
+                      className="px-4 py-2 bg-[#978C21] text-white hover:bg-[#83781C] transition-colors flex items-center gap-2 text-xs font-black uppercase tracking-widest italic cursor-pointer shadow-md shadow-[#978C21]/10"
+                      title="Declare Custom Role"
                     >
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] uppercase tracking-wider font-bold block">{r.roleName}</span>
-                        <span className="text-[8px] font-mono lowercase block text-slate-300">Slug: {r.roleId}</span>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#978C21] group-hover:translate-x-1 transition-all" />
+                      <Plus className="w-4 h-4" /> Declare New Role
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right side: Matrix editor */}
-              <div className="lg:col-span-8 bg-[#FBFAF8] border border-slate-200 p-6 rounded-sm space-y-8">
-                {/* Headers */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
-                  <div className="space-y-1">
-                    <h2 className="text-sm font-black uppercase tracking-widest text-slate-900">
-                      {selectedRole ? `Role Matrix: ${selectedRole.roleName}` : 'Declare New Custom Role'}
-                    </h2>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                      Tick clearance, adjust boundaries, scope data scopes.
-                    </p>
-                  </div>
-                  {selectedRole && selectedRole.roleId !== 'admin' && (
-                    <button
-                      onClick={() => handleDeleteRole(selectedRole.roleId)}
-                      className="px-3.5 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 text-[9px] font-black uppercase tracking-widest italic flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Purge Role
-                    </button>
-                  )}
-                </div>
-
-                {/* Sub-Form inputs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Role Display Name</label>
-                    <input
-                      type="text"
-                      value={roleFormName}
-                      onChange={(e) => setRoleFormName(e.target.value)}
-                      placeholder="E.G. FIELD FORCE MANAGER"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#978C21] outline-none text-xs rounded-none transition-all uppercase tracking-widest font-mono"
-                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Role Identifier Slug</label>
-                    <input
-                      type="text"
-                      disabled={!isEditingRoleSlug}
-                      value={roleFormSlug}
-                      onChange={(e) => setRoleFormSlug(e.target.value)}
-                      placeholder="E.G. field_force_mgr"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 focus:border-[#978C21] outline-none text-xs rounded-none transition-all lowercase tracking-widest font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Data Visibility boundaries */}
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Action Data Visibility boundaries</h4>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Restricts read parameters across corporate vertical directory structures.</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    {['Own', 'DownTeam', 'FullTeam', 'Organization'].map((scope) => {
-                      const desc = scope === 'Own' ? 'Own Data View' : scope === 'DownTeam' ? 'Down the Team View' : scope === 'FullTeam' ? 'Full Team View' : 'Organizational View';
-                      return (
-                        <button
-                          key={scope}
-                          type="button"
-                          onClick={() => setRoleFormVisibility(scope as any)}
-                          className={cn(
-                            "p-3 border text-center transition-all cursor-pointer flex flex-col justify-center items-center gap-1.5",
-                            roleFormVisibility === scope 
-                              ? "bg-white border-[#978C21] shadow-slate-900/5 shadow-md" 
-                              : "border-slate-200 hover:bg-slate-50"
-                          )}
+                  {roles.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 uppercase tracking-wider text-xs font-bold font-mono">
+                      No roles configured in system register catalog.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {roles.map((r) => (
+                        <div 
+                          key={r.roleId} 
+                          className="bg-white border border-slate-200 p-5 rounded-none flex flex-col justify-between hover:border-[#978C21] transition-all hover:shadow-md group product-card"
                         >
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">{scope}</span>
-                          <span className="text-[8px] text-slate-400 uppercase tracking-widest leading-normal text-center">{desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Granular Feature Clearance Matrix Redesigned */}
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h4 className="text-[10px] font-black text-[#978C21] uppercase tracking-widest italic font-bold">Feature Group Clearance Matrix</h4>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Enable target sidebar pages and toggle fine-grained action checklist authorizations.</p>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {APP_FEATURES_METADATA.map((item) => {
-                      const featConfig = roleFormFeatures[item.key] || { view: false };
-                      const isMainActive = !!featConfig.view;
-
-                      return (
-                        <div key={item.key} className={cn(
-                          "border rounded-sm transition-all overflow-hidden",
-                          isMainActive ? "border-[#978C21]/60 bg-[#FBFAF8]" : "border-slate-100 bg-white"
-                        )}>
-                          {/* Feature Header */}
-                          <div className="p-4 flex items-center justify-between gap-4 select-none bg-slate-50/50">
-                            <div className="space-y-0.5">
-                              <span className="text-[11px] font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                                {item.label}
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <span className="text-[11px] uppercase tracking-wider font-extrabold text-slate-800 block leading-snug">
+                                {r.roleName}
                               </span>
-                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wide leading-tight">{item.desc}</p>
+                              <span className={cn(
+                                "text-[8px] px-2 py-0.5 rounded-none font-black uppercase tracking-widest",
+                                r.isCustom ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-slate-50 text-slate-500 border border-slate-200"
+                              )}>
+                                {r.isCustom ? "Custom" : "System"}
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-1 text-[9px] font-mono text-slate-400 uppercase tracking-wider">
+                              <div>Slug Identifier: <span className="text-slate-700 font-bold lowercase">{r.roleId}</span></div>
+                              <div>Data Visibility: <span className="text-[#978C21] font-bold">{r.dataVisibility || 'Own'}</span></div>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nowActive = !isMainActive;
-                                const updated = { ...featConfig, view: nowActive };
-                                // If turning off, clear sub-options as well
-                                if (!nowActive) {
-                                  Object.keys(updated).forEach(k => {
-                                    if (k !== 'view') updated[k] = false;
-                                  });
-                                }
-                                setRoleFormFeatures({
-                                  ...roleFormFeatures,
-                                  [item.key]: updated
-                                });
-                              }}
-                              className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest px-4 py-2 border cursor-pointer transition-all flex items-center gap-1.5",
-                                isMainActive
-                                  ? "bg-[#978C21] text-white border-[#978C21] shadow-sm shadow-[#978C21]/20"
-                                  : "bg-white text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300"
-                              )}
-                            >
-                              {isMainActive ? (
-                                <>
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  ACTIVE
-                                </>
-                              ) : (
-                                "DISABLED"
-                              )}
-                            </button>
+                            <div className="pt-2 border-t border-slate-100">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest italic block mb-1">ACCESSIBLE SECTIONS</span>
+                              <div className="flex flex-wrap gap-1 max-h-[80px] overflow-hidden">
+                                {Object.entries(r.menuAccess || {})
+                                  .filter(([_, enabled]) => enabled)
+                                  .map(([path]) => {
+                                    const part = path === '/' ? 'Dashboard' : path.split('/').pop() || 'HQ';
+                                    const cleanName = part.replace(/-/g, ' ');
+                                    return (
+                                      <span key={path} className="text-[7.5px] bg-slate-50 border border-slate-100 text-slate-500 px-1.5 py-0.5 font-bold uppercase tracking-wider">
+                                        {cleanName}
+                                      </span>
+                                    );
+                                  })}
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Nested Suboptions checklist */}
-                          {isMainActive && item.suboptions && item.suboptions.length > 0 && (
-                            <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              className="p-5 border-t border-slate-100 bg-white space-y-4"
+                          <div className="pt-4 mt-4 border-t border-slate-105 flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                applyRoleToForm(r);
+                                setShowRoleForm(true);
+                              }}
+                              className="flex-1 py-2 bg-slate-50 hover:bg-[#978C21] hover:text-white border border-slate-200 text-slate-600 text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer text-center"
                             >
-                              <div className="space-y-1">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest italic block">FINE-GRAINED FEATURE CONTROLS</span>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {item.suboptions.map((subItem) => {
-                                  const isSubActive = !!featConfig[subItem.key];
-                                  return (
-                                    <div 
-                                      key={subItem.key}
-                                      onClick={() => {
-                                        setRoleFormFeatures({
-                                          ...roleFormFeatures,
-                                          [item.key]: {
-                                            ...featConfig,
-                                            [subItem.key]: !isSubActive
-                                          }
-                                        });
-                                      }}
-                                      className={cn(
-                                        "p-3 border rounded-sm flex items-start gap-3 cursor-pointer transition-all select-none hover:bg-slate-50",
-                                        isSubActive ? "border-[#978C21]/40 bg-[#978C21]/5" : "border-slate-100 bg-[#FBFAF8]"
-                                      )}
-                                    >
-                                      <button
-                                        type="button"
-                                        className={cn(
-                                          "w-5 h-5 border transition-all rounded-none shrink-0 flex items-center justify-center cursor-pointer",
-                                          isSubActive ? "bg-[#978C21] border-[#978C21] text-white" : "border-slate-200 bg-white"
-                                        )}
-                                      >
-                                        {isSubActive && <CheckCircle2 className="w-3.5 h-3.5" />}
-                                      </button>
-                                      <div className="space-y-0.5">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">{subItem.label}</span>
-                                        <p className="text-[8px] text-slate-400 uppercase tracking-widest leading-normal">{subItem.desc}</p>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </motion.div>
-                          )}
+                              Configure Matrix
+                            </button>
+                            {r.roleId !== 'admin' && r.roleId.toUpperCase() !== 'ADMIN' && (
+                              <button
+                                onClick={() => handleDeleteRole(r.roleId)}
+                                className="p-2 border border-red-150 hover:border-red-300 text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+                                title="Delete Role"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Matrix Editor & Clearance Composer workspace */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setShowRoleForm(false)}
+                      className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-[9px] font-black uppercase tracking-widest italic flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" /> Back to Roles Registry
+                    </button>
+                    <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest italic">
+                      {selectedRole ? `Configuring: ${selectedRole.roleId}` : 'Declaring Custom Organizational Role'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    {/* Compact Rollback Left Sidebar listing */}
+                    <div className="lg:col-span-3 bg-[#FBFAF8] border border-slate-200 p-5 rounded-sm space-y-4">
+                      <div className="space-y-1 pb-2 border-b border-slate-200">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-[#978C21]">Roles Index</h4>
+                        <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Quick context switch</p>
+                      </div>
+
+                      <div className="divide-y divide-slate-100 max-h-[350px] overflow-y-auto pr-1">
+                        {roles.map((r) => (
+                          <button
+                            key={r.roleId}
+                            onClick={() => applyRoleToForm(r)}
+                            className={cn(
+                              "w-full px-3 py-2 text-left flex items-center justify-between transition-all group border-l-2 cursor-pointer",
+                              selectedRole?.roleId === r.roleId 
+                                ? "bg-white border-[#978C21] font-black text-slate-900" 
+                                : "border-transparent text-slate-400 hover:text-slate-700 hover:bg-white text-[10px]"
+                            )}
+                          >
+                            <span className="text-[9px] uppercase tracking-wider font-bold truncate pr-2">{r.roleName}</span>
+                            <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Full Composer Matrix Form */}
+                    <div className="lg:col-span-9 bg-[#FBFAF8] border border-slate-200 p-6 rounded-sm space-y-8">
+                      {/* Form Header */}
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
+                        <div className="space-y-1">
+                          <h2 className="text-sm font-black uppercase tracking-widest text-slate-900">
+                            {selectedRole ? `Clearance Matrix: ${selectedRole.roleName}` : 'Declare New Custom Role'}
+                          </h2>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                            Define feature menus availability and data boundary rules.
+                          </p>
+                        </div>
+                        {selectedRole && selectedRole.roleId !== 'admin' && selectedRole.roleId.toUpperCase() !== 'ADMIN' && (
+                          <button
+                            onClick={async () => {
+                              const deleted = await handleDeleteRole(selectedRole.roleId);
+                              if (deleted) setShowRoleForm(false);
+                            }}
+                            className="px-3.5 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 text-[9px] font-black uppercase tracking-widest italic flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Purge Role
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Display / Slug Inputs */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Role Display Name</label>
+                          <input
+                            type="text"
+                            value={roleFormName}
+                            onChange={(e) => setRoleFormName(e.target.value)}
+                            placeholder="E.G. RELATIONSHIP EXECUTIVE"
+                            className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#978C21] outline-none text-xs rounded-none transition-all uppercase tracking-widest font-mono"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Role Identifier Slug</label>
+                          <input
+                            type="text"
+                            disabled={!isEditingRoleSlug}
+                            value={roleFormSlug}
+                            onChange={(e) => setRoleFormSlug(e.target.value)}
+                            placeholder="E.G. relationship_exec"
+                            className="w-full px-4 py-3 bg-white border border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 focus:border-[#978C21] outline-none text-xs rounded-none transition-all lowercase tracking-widest font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action Data Visibility boundaries */}
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">Action Data Visibility boundaries</h4>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Restricts read parameters across corporate vertical directory structures.</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          {['Own', 'DownTeam', 'FullTeam', 'Organization'].map((scope) => {
+                            const desc = scope === 'Own' ? 'Own Data View' : scope === 'DownTeam' ? 'Down the Team View' : scope === 'FullTeam' ? 'Full Team View' : 'Organizational View';
+                            return (
+                              <button
+                                key={scope}
+                                type="button"
+                                onClick={() => setRoleFormVisibility(scope as any)}
+                                className={cn(
+                                  "p-3 border text-center transition-all cursor-pointer flex flex-col justify-center items-center gap-1.5",
+                                  roleFormVisibility === scope 
+                                    ? "bg-white border-[#978C21] shadow-slate-900/5 shadow-md font-bold" 
+                                    : "border-slate-200 hover:bg-slate-50"
+                                )}
+                              >
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">{scope}</span>
+                                <span className="text-[8px] text-slate-400 uppercase tracking-widest leading-normal text-center">{desc}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Feature Clearance matrix */}
+                      <div className="space-y-6">
+                        <div className="space-y-1">
+                          <h4 className="text-[10px] font-black text-[#978C21] uppercase tracking-widest italic font-bold">Feature Group Clearance Matrix</h4>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Enable target sidebar pages and toggle fine-grained action checklist authorizations.</p>
+                        </div>
+
+                        <div className="space-y-4">
+                          {APP_FEATURES_METADATA.map((item) => {
+                            const featConfig = roleFormFeatures[item.key] || { view: false };
+                            const isMainActive = !!featConfig.view;
+
+                            return (
+                              <div key={item.key} className={cn(
+                                "border rounded-sm transition-all overflow-hidden",
+                                isMainActive ? "border-[#978C21]/60 bg-[#FBFAF8]" : "border-slate-100 bg-white"
+                              )}>
+                                {/* Feature Header */}
+                                <div className="p-4 flex items-center justify-between gap-4 select-none bg-slate-50/50">
+                                  <div className="space-y-0.5">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                      {item.label}
+                                    </span>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wide leading-tight">{item.desc}</p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nowActive = !isMainActive;
+                                      const updated = { ...featConfig, view: nowActive };
+                                      // If turning off, clear sub-options as well
+                                      if (!nowActive) {
+                                        Object.keys(updated).forEach(k => {
+                                          if (k !== 'view') updated[k] = false;
+                                        });
+                                      }
+                                      setRoleFormFeatures({
+                                        ...roleFormFeatures,
+                                        [item.key]: updated
+                                      });
+                                    }}
+                                    className={cn(
+                                      "text-[10px] font-bold uppercase tracking-widest px-4 py-2 border cursor-pointer transition-all flex items-center gap-1.5",
+                                      isMainActive
+                                        ? "bg-[#978C21] text-white border-[#978C21] shadow-sm shadow-[#978C21]/20"
+                                        : "bg-white text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300"
+                                    )}
+                                  >
+                                    {isMainActive ? (
+                                      <>
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        ACTIVE
+                                      </>
+                                    ) : (
+                                      "DISABLED"
+                                    )}
+                                  </button>
+                                </div>
+
+                                {/* Nested Suboptions checklist */}
+                                {isMainActive && item.suboptions && item.suboptions.length > 0 && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    className="p-5 border-t border-slate-100 bg-white space-y-4"
+                                  >
+                                    <div className="space-y-1">
+                                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest italic block">FINE-GRAINED FEATURE CONTROLS</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      {item.suboptions.map((subItem) => {
+                                        const isSubActive = !!featConfig[subItem.key];
+                                        return (
+                                          <div 
+                                            key={subItem.key}
+                                            onClick={() => {
+                                              setRoleFormFeatures({
+                                                ...roleFormFeatures,
+                                                [item.key]: {
+                                                  ...featConfig,
+                                                  [subItem.key]: !isSubActive
+                                                }
+                                              });
+                                            }}
+                                            className={cn(
+                                              "p-3 border rounded-sm flex items-start gap-3 cursor-pointer transition-all select-none hover:bg-slate-50",
+                                              isSubActive ? "border-[#978C21]/40 bg-[#978C21]/5" : "border-slate-100 bg-[#FBFAF8]"
+                                            )}
+                                          >
+                                            <button
+                                              type="button"
+                                              className={cn(
+                                                "w-5 h-5 border transition-all rounded-none shrink-0 flex items-center justify-center cursor-pointer",
+                                                isSubActive ? "bg-[#978C21] border-[#978C21] text-white" : "border-slate-200 bg-white"
+                                              )}
+                                            >
+                                              {isSubActive && <CheckCircle2 className="w-3.5 h-3.5" />}
+                                            </button>
+                                            <div className="space-y-0.5">
+                                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">{subItem.label}</span>
+                                              <p className="text-[8px] text-slate-400 uppercase tracking-widest leading-normal">{subItem.desc}</p>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Save Console Button */}
+                      <button
+                        type="button"
+                        onClick={handleSaveRoleMatrix}
+                        className="w-full py-4.5 bg-[#978C21] hover:bg-[#83781C] text-white font-black text-xs uppercase tracking-widest italic transition-all shadow-xl shadow-[#978C21]/20 flex items-center justify-center gap-2 cursor-pointer border-0"
+                      >
+                        <Save className="w-4 h-4" /> Save Access Definition Matrix
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                {/* Save Console */}
-                <button
-                  type="button"
-                  onClick={handleSaveRoleMatrix}
-                  className="w-full py-4.5 bg-[#978C21] hover:bg-[#83781C] text-white font-black text-xs uppercase tracking-widest italic transition-all shadow-xl shadow-[#978C21]/20 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Save className="w-4 h-4" /> Save Access Definition Matrix
-                </button>
-              </div>
+              )}
             </motion.div>
           )}
 
