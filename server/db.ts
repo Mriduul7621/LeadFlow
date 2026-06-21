@@ -7,19 +7,19 @@ export function getPool(): pg.Pool | null {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
-      console.warn("⚠️ DATABASE_URL environment variable is not defined. Neon PostgreSQL is not connected. Fallback to in-memory/local mock mode.");
+      console.warn("⚠️ DATABASE_URL environment variable is not defined. Supabase PostgreSQL is not connected. Fallback to in-memory/local mock mode.");
       return null;
     }
     try {
       pool = new Pool({
         connectionString,
         ssl: {
-          rejectUnauthorized: false // Safe and required for Neon Cloud Database connections
+          rejectUnauthorized: false // Safe and required for Supabase Cloud Database connections
         }
       });
-      console.log("🔌 Neon PostgreSQL connection pool initialized with SSL.");
+      console.log("🔌 Supabase PostgreSQL connection pool initialized with SSL.");
     } catch (err) {
-      console.error("❌ Failed to create Neon PostgreSQL connection pool:", err);
+      console.error("❌ Failed to create Supabase PostgreSQL connection pool:", err);
       return null;
     }
   }
@@ -36,7 +36,7 @@ export async function initializeDatabase() {
 
   try {
     const client = await activePool.connect();
-    console.log("🚀 Connected to Neon PostgreSQL. Running schema initialization...");
+    console.log("🚀 Connected to Supabase PostgreSQL. Running schema initialization...");
     try {
       // Create Users table
       await client.query(`

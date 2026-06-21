@@ -506,7 +506,7 @@ export default function Settings() {
                         onClick={() => {
                           const targetState = !isOfflineMode;
                           useAuthStore.getState().setOfflineMode(targetState);
-                          toast.success(targetState ? "Offline Mode Enabled: Data saved locally." : "Online Mode Enabled: Live Neon PostgreSQL connection.");
+                           toast.success(targetState ? "Offline Mode Enabled: Data saved locally." : "Online Mode Enabled: Live Supabase PostgreSQL connection.");
                         }}
                         className={cn(
                           "px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all shadow-md border",
@@ -520,7 +520,7 @@ export default function Settings() {
                     <div className="space-y-4">
                       <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500">Database Synchronization Sync</h4>
                       <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider leading-relaxed">
-                        Manually upload any locally registered lead profiles, user credentials, and status logs on this device/browser into the secure cloud Neon PostgreSQL database.
+                        Manually upload any locally registered lead profiles, user credentials, and status logs on this device/browser into the secure cloud Supabase PostgreSQL database.
                       </p>
                       <button
                         onClick={async () => {

@@ -263,7 +263,7 @@ export const syncService = {
         optionsSynced > 0 || 
         optionsDownloaded > 0
       ) {
-        toast.success(`Neon PostgreSQL Synced! Uploaded updates and downloaded cloud modifications successfully. ✨`);
+        toast.success(`Supabase Synced! Uploaded updates and downloaded cloud modifications successfully. ✨`);
       }
 
       return {

@@ -522,7 +522,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <button 
                   onClick={handleSync}
                   disabled={isSyncing}
-                  title={isSyncing ? "Syncing data to Firebase..." : "Click to Sync Data with secure cloud network"}
+                  title={isSyncing ? "Syncing data to Supabase..." : "Click to Sync Data with secure cloud network"}
                   className={cn(
                     "p-2.5 border border-slate-100 rounded-sm hover:text-[#978C21] hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-2",
                     isSyncing ? "text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed" : "text-[#978C21]"

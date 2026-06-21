@@ -31,7 +31,7 @@ app.use(async (req, res, next) => {
 });
 
   // ==========================================
-  // Neon PostgreSQL API REST Routes (CRUD)
+  // Supabase PostgreSQL API REST Routes (CRUD)
   // ==========================================
 
   // Check if database is connected
@@ -40,7 +40,7 @@ app.use(async (req, res, next) => {
     if (!pool) {
       return res.json({ connected: false, message: 'DATABASE_URL is not set.' });
     }
-    res.json({ connected: true, message: 'Connected to Neon PostgreSQL.' });
+    res.json({ connected: true, message: 'Connected to Supabase PostgreSQL Database.' });
   });
 
   // --- USERS CRUD ---
