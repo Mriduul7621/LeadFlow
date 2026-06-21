@@ -76,7 +76,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => clearInterval(rTimer);
   }, [user]);
 
-  // 3-Minute Inactivity Session Timeout with Multi-Tab Synchronization
+  // 30-Minute Inactivity Session Timeout with Multi-Tab Synchronization
   useEffect(() => {
     if (!user) return;
 
@@ -93,9 +93,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const lastActivity = parseInt(lastActivityStr, 10);
       const now = Date.now();
       
-      if (now - lastActivity > 180000) { // 3 minutes = 180,000ms
+      if (now - lastActivity > 1800000) { // 30 minutes = 1,800,000ms
         clearInterval(checkTimeoutInterval);
-        toast.error("Session expired due to 3 minutes of inactivity.", {
+        toast.error("Session expired due to 30 minutes of inactivity.", {
           duration: 7000,
           id: "session-timeout-toast"
         });
