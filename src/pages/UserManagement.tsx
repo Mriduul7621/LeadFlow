@@ -138,6 +138,19 @@ const APP_FEATURES_METADATA: FeatureMeta[] = [
       { key: 'hier_edit', label: 'Reporting Structures: Edit', desc: 'Can modify hierarchies.' },
       { key: 'hier_delete', label: 'Reporting Structures: Delete', desc: 'Can delete hierarchies.' }
     ]
+  },
+  {
+    key: 'settings_control',
+    label: 'Settings Configuration & Options (Network Settings)',
+    desc: 'Control access to dynamic configurations, passwords, and manual sync inside Settings.',
+    suboptions: [
+      { key: 'view_profile', label: 'Identity Settings: View/Edit', desc: 'Allow user to edit display name & custom avatar.' },
+      { key: 'view_security', label: 'Security & Passwords: View/Edit', desc: 'Allow user to modify account authorization passwords.' },
+      { key: 'view_notifications', label: 'Push Intelligence: View/Edit', desc: 'Allow user to review push alerts and notification triggers.' },
+      { key: 'view_system', label: 'System Configuration: View/Edit', desc: 'Allow user to change layout animations and visual period settings.' },
+      { key: 'view_sync', label: 'Network & Sync: View/Edit', desc: 'Allow user to run manual cloud syncing and review database mode.' },
+      { key: 'configure_parameters', label: 'Strategy Parameters: View/Edit', desc: 'Allow user to add/delete area, source, product, campaign parameters.' }
+    ]
   }
 ];
 
@@ -333,6 +346,15 @@ export default function UserManagement() {
         role_view: false, role_create: false, role_edit: false, role_delete: false,
         user_view: false, user_create: false, user_edit: false, user_delete: false,
         hier_view: false, hier_create: false, hier_edit: false, hier_delete: false
+      },
+      settings_control: {
+        view: false,
+        view_profile: false,
+        view_security: false,
+        view_notifications: false,
+        view_system: false,
+        view_sync: false,
+        configure_parameters: false
       }
     };
     setRoleFormFeatures(defaultSec);
@@ -367,7 +389,7 @@ export default function UserManagement() {
           '/follow-up': roleFormFeatures?.follow_up_strategy?.view ?? false,
           '/team': roleFormFeatures?.team_progress?.view ?? false,
           '/users': roleFormFeatures?.user_management?.view ?? (cleanSlug === 'admin' || cleanSlug === 'superadmin'),
-          '/settings': roleFormFeatures?.user_management?.view ?? (cleanSlug === 'admin' || cleanSlug === 'superadmin')
+          '/settings': roleFormFeatures?.settings_control?.view ?? (cleanSlug === 'admin' || cleanSlug === 'superadmin')
         },
         dataVisibility: roleFormVisibility,
         actions: {

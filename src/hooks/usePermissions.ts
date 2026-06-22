@@ -75,6 +75,7 @@ export function usePermissions() {
 
     // Determine normalized feature key
     let mappedFeatureId = featureId;
+    let finalActionKey = actionKey;
     if (featureId === 'lead_upl_gen') {
       if (actionKey === 'bulk_generate_crm_leads') {
         mappedFeatureId = 'lead_generate';
@@ -84,7 +85,10 @@ export function usePermissions() {
     } else if (featureId === 'team_progress') {
       mappedFeatureId = 'team_management';
     } else if (featureId === 'admin_settings') {
-      mappedFeatureId = 'user_management';
+      mappedFeatureId = 'settings_control';
+      if (actionKey === 'configure_global_metadata') {
+        finalActionKey = 'configure_parameters';
+      }
     } else if (featureId === 'all_leads') {
       mappedFeatureId = 'lead_tracking';
     }
@@ -96,18 +100,18 @@ export function usePermissions() {
     const deleteKeys = ['delete_destroy_leads', 'delete'];
     const uploadKeys = ['upload_excel_csv', 'upload_raw_csv_xlsx', 'validate_bulk_schema', 'commit_bulk_database', 'upload'];
 
-    if (createKeys.includes(actionKey)) {
+    if (createKeys.includes(finalActionKey)) {
       actionType = 'create';
-    } else if (editKeys.includes(actionKey)) {
+    } else if (editKeys.includes(finalActionKey)) {
       actionType = 'edit';
-    } else if (deleteKeys.includes(actionKey)) {
+    } else if (deleteKeys.includes(finalActionKey)) {
       actionType = 'delete';
-    } else if (uploadKeys.includes(actionKey)) {
+    } else if (uploadKeys.includes(finalActionKey)) {
       actionType = 'upload';
-    } else if (actionKey.startsWith('view') || actionKey.startsWith('explore') || actionKey.startsWith('monitor') || actionKey.startsWith('visualize') || actionKey.startsWith('evaluate')) {
+    } else if (finalActionKey.startsWith('view') || finalActionKey.startsWith('explore') || finalActionKey.startsWith('monitor') || finalActionKey.startsWith('visualize') || finalActionKey.startsWith('evaluate')) {
       actionType = 'view';
     } else {
-      const keyNormalized = actionKey.toLowerCase();
+      const keyNormalized = finalActionKey.toLowerCase();
       if (['view', 'create', 'edit', 'delete', 'upload'].includes(keyNormalized)) {
         actionType = keyNormalized as any;
       }
@@ -123,7 +127,8 @@ export function usePermissions() {
       all_leads: ['/leads/all'],
       analytics: ['/execution-intelligence', '/ncp-progress', '/trend-charts', '/campaign-breakdown'],
       team_management: ['/team'],
-      user_management: ['/users', '/settings'],
+      user_management: ['/users'],
+      settings_control: ['/settings'],
     };
 
     const targetPaths = featurePathMapping[featureId] || featurePathMapping[mappedFeatureId];
@@ -140,8 +145,8 @@ export function usePermissions() {
       if (!actionsMap.view) {
         return false;
       }
-      if (actionsMap[actionKey] !== undefined) {
-        return actionsMap[actionKey];
+      if (actionsMap[finalActionKey] !== undefined) {
+        return actionsMap[finalActionKey];
       }
       if (actionsMap[actionType] !== undefined) {
         return actionsMap[actionType];

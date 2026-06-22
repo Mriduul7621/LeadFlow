@@ -164,13 +164,15 @@ export default function Settings() {
     }
   };
 
+  const userRoleNormalized = (user?.role || '').toUpperCase();
+
   const sections = [
-    { id: 'profile', label: 'Identity Settings', icon: Users, desc: 'Manage your profile and display name' },
-    { id: 'security', label: 'Security & Access', icon: Key, desc: 'Update passwords and verification' },
-    { id: 'notifications', label: 'Push Intelligence', icon: Bell, desc: 'Configure real-time lead alerts' },
-    { id: 'system', label: 'System Configuration', icon: SettingsIcon, desc: 'Customize dashboard layout and theme' },
-    { id: 'sync', label: 'Network & Sync', icon: Globe, desc: 'Integration endpoints and health' },
-  ];
+    { id: 'profile', label: 'Identity Settings', icon: Users, desc: 'Manage your profile and display name', allowed: canAccess('settings_control', 'view_profile') },
+    { id: 'security', label: 'Security & Access', icon: Key, desc: 'Update passwords and verification', allowed: canAccess('settings_control', 'view_security') },
+    { id: 'notifications', label: 'Push Intelligence', icon: Bell, desc: 'Configure real-time lead alerts', allowed: canAccess('settings_control', 'view_notifications') },
+    { id: 'system', label: 'System Configuration', icon: SettingsIcon, desc: 'Customize dashboard layout and theme', allowed: canAccess('settings_control', 'view_system') },
+    { id: 'sync', label: 'Network & Sync', icon: Globe, desc: 'Integration endpoints and health', allowed: canAccess('settings_control', 'view_sync') },
+  ].filter(section => section.allowed);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20">
@@ -276,20 +278,22 @@ export default function Settings() {
                     </div>
                   ))}
                   
-                  <div className="pt-6">
-                    <div className="bg-red-50/20 rounded-sm border border-red-100 p-8 flex items-center justify-between italic">
-                      <div className="flex items-center gap-4">
-                         <div className="p-4 bg-red-50 text-red-500 rounded-sm border border-red-100">
-                            <Database className="w-5 h-5" />
-                         </div>
-                         <div>
-                            <h4 className="font-black text-red-600 uppercase tracking-widest text-[13px]">Backend Ops Intelligence</h4>
-                            <p className="text-[10px] text-red-400 font-bold uppercase mt-1 tracking-tight italic">Low-level protocol access for system architects.</p>
-                         </div>
+                  {userRoleNormalized === 'ADMIN' && (
+                    <div className="pt-6">
+                      <div className="bg-red-50/20 rounded-sm border border-red-100 p-8 flex items-center justify-between italic">
+                        <div className="flex items-center gap-4">
+                           <div className="p-4 bg-red-50 text-red-500 rounded-sm border border-red-100">
+                              <Database className="w-5 h-5" />
+                           </div>
+                           <div>
+                              <h4 className="font-black text-red-600 uppercase tracking-widest text-[13px]">Backend Ops Intelligence</h4>
+                              <p className="text-[10px] text-red-400 font-bold uppercase mt-1 tracking-tight italic">Low-level protocol access for system architects.</p>
+                           </div>
+                        </div>
+                        <button className="text-[10px] font-black text-red-600 hover:underline tracking-widest" onClick={handleClearData}>PURGE DATABASE</button>
                       </div>
-                      <button className="text-[10px] font-black text-red-600 hover:underline tracking-widest" onClick={handleClearData}>PURGE DATABASE</button>
                     </div>
-                  </div>
+                  )}
                 </>
               ) : activeSection === 'profile' ? (
                 <motion.div 

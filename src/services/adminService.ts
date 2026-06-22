@@ -61,6 +61,15 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
       role_view: true, role_create: true, role_edit: true, role_delete: true,
       user_view: true, user_create: true, user_edit: true, user_delete: true,
       hier_view: true, hier_create: true, hier_edit: true, hier_delete: true
+    },
+    settings_control: {
+      view: true,
+      view_profile: true,
+      view_security: true,
+      view_notifications: true,
+      view_system: true,
+      view_sync: true,
+      configure_parameters: true
     }
   };
 
@@ -84,12 +93,13 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
         else if (feat === 'lead_upload') route = '/leads/upload';
         else if (feat === 'lead_tracking') route = '/leads';
         else if (feat === 'execution_intelligence') route = '/execution-intelligence';
-        else if (feat === 'ncp_progress') route = '/ncp-progress';
+        else if (feat === 'ncp-progress') route = '/ncp-progress';
         else if (feat === 'trend_charts') route = '/trend-charts';
         else if (feat === 'campaign_breakdown') route = '/campaign-breakdown';
         else if (feat === 'follow_up_strategy') route = '/follow-up';
         else if (feat === 'team_progress') route = '/team';
         else if (feat === 'user_management') route = '/users';
+        else if (feat === 'settings_control') route = '/settings';
 
         const isRouteEnabled = role.menuAccess?.[route] ?? false;
         f[feat].view = isRouteEnabled;
@@ -106,6 +116,12 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
             f[feat][subK] = role.actions?.edit ?? false;
           } else if (feat === 'user_management') {
             f[feat][subK] = false;
+          } else if (feat === 'settings_control') {
+            if (subK === 'configure_parameters' || subK === 'view_sync') {
+              f[feat][subK] = (roleIdUpper === 'ADMIN' || roleIdUpper === 'SUPERADMIN' || roleIdUpper === 'ADMINISTRATOR');
+            } else {
+              f[feat][subK] = isRouteEnabled;
+            }
           } else {
             f[feat][subK] = isRouteEnabled;
           }
