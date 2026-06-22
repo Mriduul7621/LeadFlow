@@ -152,23 +152,6 @@ export const adminService = {
       let localRoles: RolePermission[] = data ? JSON.parse(data) : [];
       let changed = false;
 
-      const systemIdsToPurge = ['BH', 'ASM', 'BDM', 'RM', 'BE', 'RO', 'bh', 'asm', 'bdm', 'rm', 'be', 'ro'];
-
-      // Filter out any legacy default non-custom roles from local list
-      const initialLength = localRoles.length;
-      localRoles = localRoles.filter(r => {
-        const rIdUpper = (r.roleId || '').toUpperCase();
-        if (rIdUpper === 'ADMIN') return true;
-        if (systemIdsToPurge.includes(rIdUpper) && r.isCustom !== true) {
-          return false;
-        }
-        return true;
-      });
-
-      if (localRoles.length !== initialLength) {
-        changed = true;
-      }
-
       // Seed ADMIN built-in default if not present
       if (!localRoles.some(r => r.roleId.toUpperCase() === 'ADMIN')) {
         localRoles.push(DEFAULT_ROLE_PERMISSIONS[0]);
@@ -188,22 +171,7 @@ export const adminService = {
         const cloudRoles = await res.json();
         let mergedChanged = false;
 
-        // Automatically delete system roles (excluding ADMIN) from PostgreSQL
         for (const cr of cloudRoles) {
-          const rIdUpper = (cr.roleId || '').toUpperCase();
-          if (systemIdsToPurge.includes(rIdUpper)) {
-            try {
-              await fetch(`/api/roles/${cr.roleId}`, { method: 'DELETE' });
-            } catch (err) {}
-          }
-        }
-
-        const filteredCloudRoles = cloudRoles.filter((cr: any) => {
-          const rIdUpper = (cr.roleId || '').toUpperCase();
-          return rIdUpper === 'ADMIN' || !systemIdsToPurge.includes(rIdUpper);
-        });
-
-        for (const cr of filteredCloudRoles) {
           const isAdm = cr.roleId.toUpperCase() === 'ADMIN';
           const finalizedCr = {
             ...ensureFeaturePermissions(cr),
@@ -221,7 +189,7 @@ export const adminService = {
         }
 
         // Clean localRoles again based on filtered cloud ids
-        const activeIds = new Set(filteredCloudRoles.map((cr: any) => cr.roleId.toUpperCase()));
+        const activeIds = new Set(cloudRoles.map((cr: any) => cr.roleId.toUpperCase()));
         const originalLocalLen = localRoles.length;
         localRoles = localRoles.filter(r => {
           const rIdUpper = r.roleId.toUpperCase();
@@ -244,15 +212,8 @@ export const adminService = {
     } catch (error) {
       console.warn('PostgreSQL fetch roles fallback to local cache:', error);
       const data = localStorage.getItem(KEYS.ROLES);
-      let outputRoles = data ? JSON.parse(data) : DEFAULT_ROLE_PERMISSIONS;
-      const systemIdsToPurge = ['BH', 'ASM', 'BDM', 'RM', 'BE', 'RO', 'bh', 'asm', 'bdm', 'rm', 'be', 'ro'];
-      outputRoles = outputRoles.filter((r: RolePermission) => {
-        const rIdUpper = r.roleId.toUpperCase();
-        if (rIdUpper === 'ADMIN') return true;
-        if (systemIdsToPurge.includes(rIdUpper) && r.isCustom !== true) return false;
-        return true;
-      });
-      return outputRoles.map(r => {
+      const outputRoles = data ? JSON.parse(data) : DEFAULT_ROLE_PERMISSIONS;
+      return outputRoles.map((r: RolePermission) => {
         const isAdm = r.roleId.toUpperCase() === 'ADMIN';
         return {
           ...ensureFeaturePermissions(r),
