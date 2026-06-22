@@ -12,7 +12,11 @@ import {
   Trash2,
   Save,
   X,
-  ArrowRight
+  ArrowRight,
+  Radio,
+  Wifi,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -43,6 +47,33 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Supabase connection signal states
+  const [dbStatus, setDbStatus] = useState<{ connected: boolean; message: string } | null>(null);
+  const [dbChecking, setDbChecking] = useState(false);
+
+  const checkDbStatus = async () => {
+    setDbChecking(true);
+    try {
+      const res = await fetch('/api/db-status');
+      if (res.ok) {
+        const data = await res.json();
+        setDbStatus(data);
+      } else {
+        setDbStatus({ connected: false, message: 'Endpoint returned an error status.' });
+      }
+    } catch (e) {
+      setDbStatus({ connected: false, message: 'Could not contact backend system status service.' });
+    } finally {
+      setDbChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'sync') {
+      checkDbStatus();
+    }
+  }, [activeSection]);
 
   const handleUpdateName = async () => {
     if (!user || !newName.trim()) return;
@@ -519,6 +550,81 @@ export default function Settings() {
                       >
                         {isOfflineMode ? "Enable Cloud / Go Live" : "Disconnect / Work Offline"}
                       </button>
+                    </div>
+
+                    {/* Supabase Live Live Signal Tracker */}
+                    <div className="border-b border-slate-200/50 pb-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500">Supabase Connection Signal</h4>
+                        <button 
+                          onClick={checkDbStatus}
+                          disabled={dbChecking}
+                          className="text-[9px] font-black uppercase tracking-widest text-[#978C21] hover:underline"
+                        >
+                          {dbChecking ? "CHANNELS BUSY..." : "PING DATABASE SIGNAL"}
+                        </button>
+                      </div>
+
+                      {dbChecking ? (
+                        <div className="p-4 bg-slate-50 rounded-sm border border-slate-100 flex items-center justify-center gap-3">
+                          <span className="w-2.5 h-2.5 rounded-full inline-block bg-slate-400 animate-pulse" />
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">PROBING SUPABASE CLOUD POSTGRESQL SIGNAL...</p>
+                        </div>
+                      ) : dbStatus?.connected ? (
+                        <div className="p-5 bg-emerald-50/50 rounded-sm border border-emerald-100 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Radio className="w-5 h-5 text-emerald-600 animate-pulse" />
+                            <div>
+                              <p className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">EXCELLENT SIGNAL (CLOUD ONLINE)</p>
+                              <p className="text-[10px] text-emerald-500 font-bold uppercase mt-0.5">{dbStatus.message}</p>
+                            </div>
+                          </div>
+                          <div className="pt-3 border-t border-emerald-100/50 grid grid-cols-2 gap-4 text-[9px] uppercase font-bold text-slate-500">
+                            <div>
+                              <span className="block text-slate-400">DATABASE SERVICE</span>
+                              <span className="text-slate-800 font-black">Supabase PostgreSQL</span>
+                            </div>
+                            <div>
+                              <span className="block text-slate-400">SECURITY HANDSHAKE</span>
+                              <span className="text-slate-800 font-black">SSL Encrypted / Verified</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-5 bg-amber-50/50 rounded-sm border border-amber-100 space-y-4 text-left">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-[11px] font-black text-amber-700 uppercase tracking-widest">NO SIGNAL / DEV MOCK FALLBACK</p>
+                              <p className="text-[10px] text-amber-600 font-bold uppercase mt-1 leading-relaxed">
+                                {dbStatus?.message || "No connection established because DATABASE_URL is not set as an Environment Secret yet."}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-slate-900 text-slate-100 rounded-sm font-mono text-[9px] uppercase space-y-3 leading-relaxed tracking-wider">
+                            <p className="text-[#978C21] font-bold">⚠️ REQUIRED SYNC ACTION STEPS:</p>
+                            <p>
+                              1. CLICK <span className="text-amber-400 font-black">⚙️ SETTINGS</span> (TOP-RIGHT IN GOOGLE AI STUDIO CHAT BAR/TOOLBAR).
+                            </p>
+                            <p>
+                              2. IN THE "SECRETS" / "ENVIRONMENT VARIABLES" SECTION, ADD A NEW KEY:
+                              <br />
+                              <strong className="text-white text-[11px] bg-slate-800 px-1 py-0.5 rounded">DATABASE_URL</strong>
+                            </p>
+                            <p className="normal-case">
+                              3. PASTE YOUR SUPABASE PostgreSQL CONNECTION STRING. BIG RECOMMENDATION: USE THE TRANSACTION POOLER URL. EXAMPLE FORMAT:
+                              <br />
+                              <span className="text-emerald-400 text-[10px] font-black break-all">
+                                postgres://postgres.wfpoqwmxpsvayhjyzdjx:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require
+                              </span>
+                            </p>
+                            <p>
+                              👉 <span className="text-amber-400 font-bold">REPLACE [YOUR-PASSWORD]</span> WITH YOUR SUPABASE DB USER PASSWORD.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-4">
