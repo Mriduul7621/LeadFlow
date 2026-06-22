@@ -1,19 +1,11 @@
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { getPool, initializeDatabase } from './server/db.ts';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
-
-const __filename = typeof import.meta !== 'undefined' && import.meta.url
-  ? fileURLToPath(import.meta.url)
-  : '';
-const __dirname = typeof import.meta !== 'undefined' && import.meta.url
-  ? path.dirname(__filename)
-  : '';
 
 const app = express();
 const PORT = 3000;
