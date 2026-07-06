@@ -15,6 +15,7 @@ import { userService } from '../services/userService';
 import { settingsService } from '../services/settingsService';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import TaskCalendar from './TaskCalendar';
 
 const CAMPAIGN_TREND_DATA = [
   { date: '01 May', value: 40 },
@@ -497,8 +498,8 @@ export default function Dashboard() {
       const allLeads = await leadService.getLeads({ 
         employeeId: user.employeeId, 
         role: user.role,
-        startDate: period === 'CUSTOM' ? customDates.start : (period === 'TODAY' ? selectedDate : undefined),
-        endDate: period === 'CUSTOM' ? customDates.end : (period === 'TODAY' ? selectedDate : undefined)
+        startDate: period === 'CUSTOM' ? customDates.start : (period === 'TODAY' ? selectedDate + 'T00:00:00' : undefined),
+        endDate: period === 'CUSTOM' ? customDates.end : (period === 'TODAY' ? selectedDate + 'T23:59:59.999' : undefined)
       });
       setLeads(allLeads);
       
@@ -1931,6 +1932,13 @@ export default function Dashboard() {
       
         </div>
        )}
+
+      {/* Dynamic Task Calendar embedded at Dashboard bottom if role permission is selected */}
+      {canAccess('dashboard', 'view_task_calendar') && (
+         <div className="bg-white rounded-sm border border-slate-100 shadow-sm mt-8 mx-1 p-8 overflow-hidden animate-in fade-in duration-300">
+            <TaskCalendar embedded={true} />
+         </div>
+      )}
     </div>
   );
 }

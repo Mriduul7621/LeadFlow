@@ -19,6 +19,7 @@ import ExecutionIntelligence from './pages/ExecutionIntelligence';
 import NcpProgress from './pages/NcpProgress';
 import TrendCharts from './pages/TrendCharts';
 import CampaignBreakdown from './pages/CampaignBreakdown';
+import TaskCalendar from './pages/TaskCalendar';
 import { useAuthStore } from './store/authStore';
 import { Toaster } from 'sonner';
 import { userService } from './services/userService';
@@ -68,6 +69,10 @@ const router = createBrowserRouter([
   {
     path: '/follow-up',
     element: <ProtectedRoute><FollowUpStrategy /></ProtectedRoute>,
+  },
+  {
+    path: '/task-calendar',
+    element: <ProtectedRoute><TaskCalendar /></ProtectedRoute>,
   },
   {
     path: '/users',

@@ -6,15 +6,17 @@ import {
   Download, 
   MoreHorizontal, 
   Phone, 
-  MessageSquare,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Calendar,
-  RefreshCw
+  MessageSquare, 
+  Clock, 
+  ChevronLeft, 
+  ChevronRight, 
+  Eye, 
+  CheckCircle, 
+  XCircle, 
+  Calendar, 
+  RefreshCw,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,6 +39,23 @@ const getStatusColor = (status: string) => {
     case 'Not Interested': return 'bg-red-100 text-red-700 border-red-200';
     case 'Callback Required': return 'bg-orange-100 text-orange-700 border-orange-200';
     default: return 'bg-slate-100 text-slate-600';
+  }
+};
+
+const formatToDateTimeLocal = (dateStr?: string) => {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateStr)) return dateStr;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${date}T${hours}:${minutes}`;
+  } catch (e) {
+    return '';
   }
 };
 
@@ -137,6 +156,17 @@ export default function LeadList() {
       toast.error('Failed to sync lead intelligence');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!window.confirm('Are you sure you want to permanently delete this lead?')) return;
+    try {
+      await leadService.deleteLead(leadId);
+      toast.success('Lead has been deleted successfully');
+      loadLeads();
+    } catch (err) {
+      toast.error('Failed to delete the lead');
     }
   };
 
@@ -574,19 +604,28 @@ export default function LeadList() {
                     })()}
                   </td>
                   <td className="px-6 py-6 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                        <button 
                          onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }}
-                         className="p-2.5 text-slate-300 hover:text-[#978C21] hover:bg-white rounded-sm transition-all shadow-sm border border-transparent hover:border-slate-100"
+                         className="p-2 border border-slate-100 hover:border-[#978C21] text-slate-400 hover:text-[#978C21] hover:bg-slate-50 rounded-sm shadow-xs transition-all bg-white cursor-pointer"
+                         title="Edit Status & Logs"
                        >
-                        <Eye className="w-4 h-4" />
+                        <Edit2 className="w-3.5 h-3.5" />
                        </button>
                        <button 
                          onClick={(e) => { e.stopPropagation(); handleCall(lead.prospectName || 'Prospect'); }}
-                         className="p-2.5 text-slate-300 hover:text-brand-blue hover:bg-white rounded-sm transition-all shadow-sm border border-transparent hover:border-slate-100"
+                         className="p-2 border border-slate-100 hover:border-blue-300 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-sm shadow-xs transition-all bg-white cursor-pointer"
+                         title="Call Prospect"
                        >
-                        <Phone className="w-4 h-4" />
-                      </button>
+                        <Phone className="w-3.5 h-3.5" />
+                       </button>
+                       <button 
+                         onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
+                         className="p-2 border border-slate-100 hover:border-red-300 text-slate-400 hover:text-red-550 hover:bg-red-50 rounded-sm shadow-xs transition-all bg-white cursor-pointer"
+                         title="Delete Lead"
+                       >
+                        <Trash2 className="w-3.5 h-3.5" />
+                       </button>
                     </div>
                   </td>
                 </motion.tr>
@@ -778,10 +817,10 @@ export default function LeadList() {
                       {/* Conditional Field: No Response -> Next Call Date */}
                       {formStatus === 'No Response' && (
                          <div className="space-y-1">
-                            <p className="text-[9px] font-black text-slate-400 uppercase italic">Next Call Date <span className="text-red-500">*</span></p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase italic">Next Call Date & Time <span className="text-red-500">*</span></p>
                             <input 
-                              type="date"
-                              value={formNextCallDate ? formNextCallDate.substring(0, 10) : ''}
+                              type="datetime-local"
+                              value={formNextCallDate ? formatToDateTimeLocal(formNextCallDate) : ''}
                               onChange={(e) => setFormNextCallDate(e.target.value)}
                               className="w-full bg-[#FBFAF8] border border-slate-100 rounded-sm px-4 py-3 text-[11px] font-black uppercase focus:ring-1 focus:ring-[#978C21] outline-none"
                             />
@@ -791,10 +830,10 @@ export default function LeadList() {
                       {/* Conditional Field: Meeting Fixed -> Meeting Date */}
                       {formStatus === 'Meeting Fixed' && (
                          <div className="space-y-1">
-                            <p className="text-[9px] font-black text-slate-400 uppercase italic">Meeting Date <span className="text-red-500">*</span></p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase italic">Meeting Date & Time <span className="text-red-500">*</span></p>
                             <input 
-                              type="date"
-                              value={formMeetingDate ? formMeetingDate.substring(0, 10) : ''}
+                              type="datetime-local"
+                              value={formMeetingDate ? formatToDateTimeLocal(formMeetingDate) : ''}
                               onChange={(e) => setFormMeetingDate(e.target.value)}
                               className="w-full bg-[#FBFAF8] border border-slate-100 rounded-sm px-4 py-3 text-[11px] font-black uppercase focus:ring-1 focus:ring-[#978C21] outline-none"
                             />
@@ -804,10 +843,10 @@ export default function LeadList() {
                       {/* Conditional Field: Follow-up Set, Interested or Busy -> Next Follow-up Date */}
                       {(formStatus === 'Follow-up Set' || formStatus === 'Interested' || formStatus === 'Busy') && (
                          <div className="space-y-1">
-                            <p className="text-[9px] font-black text-slate-400 uppercase italic">Target Follow-Up Date <span className="text-red-500">*</span></p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase italic">Target Follow-Up Date & Time <span className="text-red-500">*</span></p>
                             <input 
-                              type="date"
-                              value={formNextFollowUpDate ? formNextFollowUpDate.substring(0, 10) : ''}
+                              type="datetime-local"
+                              value={formNextFollowUpDate ? formatToDateTimeLocal(formNextFollowUpDate) : ''}
                               onChange={(e) => setFormNextFollowUpDate(e.target.value)}
                               className="w-full bg-[#FBFAF8] border border-slate-100 rounded-sm px-4 py-3 text-[11px] font-black uppercase focus:ring-1 focus:ring-[#978C21] outline-none"
                             />

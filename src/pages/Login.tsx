@@ -12,6 +12,7 @@ import { localDb } from '../services/localDb';
 import { userService } from '../services/userService';
 import { syncService } from '../services/syncService';
 import { User, UserRole } from '../types';
+import { useTranslation } from '../utils/translations';
 
 function detectRoleFromEmployeeId(empId: string): UserRole {
   const norm = empId.trim().toUpperCase();
@@ -68,6 +69,7 @@ const setupSchema = z.object({
 });
 
 export default function Login() {
+  const { t, language, setLanguage } = useTranslation();
   const { login } = useAuthStore();
   const navigate = useNavigate();
   const [showForm, setShowForm] = React.useState(false);
@@ -172,7 +174,7 @@ export default function Login() {
         }
 
         login(masterAdmin, false);
-        toast.success("Master Admin Protocol Authenticated.");
+        toast.success(t('masterAdminProtocol'));
         syncService.syncToDatabase();
         navigate('/');
         return;
@@ -244,7 +246,7 @@ export default function Login() {
 
         // Log in to online session
         login(matchedUser, false);
-        toast.success(`Welcome back, ${matchedUser.name}!`);
+        toast.success(t('welcomeMessage', { name: matchedUser.name }));
         
         // Push any local storage offline data into PostgreSQL Cloud Database synchronously
         syncService.syncToDatabase();
@@ -274,13 +276,39 @@ export default function Login() {
         id="login-dark-gradient"
       />
 
+      {/* Language Switcher in top right corner */}
+      <div className="absolute top-6 right-6 z-30 flex items-center gap-1 bg-black/50 backdrop-blur-md border border-white/10 p-1 rounded-full shadow-lg" id="login-language-switcher">
+        <button
+          type="button"
+          onClick={() => setLanguage('en')}
+          className={`px-3.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${
+            language === 'en'
+              ? 'bg-[#978C21] text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          EN
+        </button>
+        <button
+          type="button"
+          onClick={() => setLanguage('bn')}
+          className={`px-3.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${
+            language === 'bn'
+              ? 'bg-[#978C21] text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          BN
+        </button>
+      </div>
+
       {/* Decorative Bottom Bar Indicator */}
       <div className="absolute bottom-6 left-8 z-20 hidden md:flex flex-col items-start gap-1" id="system-ready-indicator">
-        <span className="text-[10px] text-slate-500 font-bold tracking-[0.25em] uppercase opacity-60">System Ready</span>
+        <span className="text-[10px] text-slate-500 font-bold tracking-[0.25em] uppercase opacity-60">{t('systemReady')}</span>
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-[#978C21] animate-ping" />
           <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest opacity-85">
-            {isFirstTimeSetup ? "Setup Required" : "Secure Node Online"}
+            {isFirstTimeSetup ? t('setupRequired') : t('secureNodeOnline')}
           </span>
         </div>
       </div>
@@ -343,13 +371,13 @@ export default function Login() {
               </div>
 
               {/* Subheading */}
-              <h2 className="text-xs sm:text-sm font-black text-white tracking-[0.25em] uppercase select-none">
-                Maximize Your Conversion Flow
+              <h2 className="text-xs sm:text-sm font-black text-white tracking-[0.2em] uppercase select-none">
+                {t('loginSubheading')}
               </h2>
 
               {/* Small description copy */}
               <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed max-w-sm select-none opacity-80 decoration-none">
-                An intelligent lead management and tracking console built for sales and growth teams to scale active pipelines.
+                {t('loginDesc')}
               </p>
 
               {/* Call To Action button */}
@@ -361,7 +389,7 @@ export default function Login() {
                   className="px-8 py-3.5 bg-[#978C21] hover:bg-[#a59924] text-white rounded-lg font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-[#978C21]/20 group cursor-pointer"
                   id="login-now-btn"
                 >
-                  {isFirstTimeSetup ? "Initialize Console" : "Login Now"} 
+                  {isFirstTimeSetup ? t('initializeConsoleBtn') : t('loginButton')} 
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </motion.button>
               </div>
@@ -382,21 +410,21 @@ export default function Login() {
               {isFirstTimeSetup ? (
                 <>
                   <div className="text-center mb-6" id="setup-header">
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Initialize Super Admin</h2>
-                    <p className="text-[#978C21] text-[10px] font-black uppercase tracking-widest mt-1">First-time system setup</p>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">{t('setupTitle')}</h2>
+                    <p className="text-[#978C21] text-[10px] font-black uppercase tracking-widest mt-1">{t('setupSub')}</p>
                   </div>
 
                   <form onSubmit={handleSetupSubmit(onSetupSubmit)} className="space-y-4" id="setup-credentials-form">
                     {/* Full Name input */}
                     <div className="space-y-1" id="setup-name-group">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block animate-pulse">Full Name</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block animate-pulse">{t('fullNameLabel')}</label>
                       <div className="relative group">
                         <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...registerSetup('fullName')}
                           type="text" 
                           className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-xs font-semibold text-white placeholder-slate-500"
-                          placeholder="EX: Admin Director"
+                          placeholder={t('fullNamePlaceholder')}
                           autoComplete="off"
                         />
                       </div>
@@ -405,14 +433,14 @@ export default function Login() {
 
                     {/* Employee ID input */}
                     <div className="space-y-1" id="setup-empid-group">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Employee ID</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">{t('employeeIdLabel')}</label>
                       <div className="relative group">
                         <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...registerSetup('employeeId')}
                           type="text" 
                           className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-xs font-semibold text-white placeholder-slate-500 uppercase tracking-wider"
-                          placeholder="EX: ADMIN or ADM001"
+                          placeholder={t('employeeIdPlaceholder')}
                           autoComplete="off"
                         />
                       </div>
@@ -421,14 +449,14 @@ export default function Login() {
 
                     {/* Email input */}
                     <div className="space-y-1" id="setup-email-group">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Email Address</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">{t('emailLabel')}</label>
                       <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...registerSetup('email')}
                           type="email" 
                           className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-xs font-semibold text-white placeholder-slate-500"
-                          placeholder="EX: admin@shantalife.com"
+                          placeholder={t('emailPlaceholder')}
                           autoComplete="off"
                         />
                       </div>
@@ -437,14 +465,14 @@ export default function Login() {
 
                     {/* Password input */}
                     <div className="space-y-1" id="setup-password-group">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Password</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">{t('passwordLabel')}</label>
                       <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...registerSetup('password')}
                           type="password" 
                           className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-xs font-semibold text-white placeholder-slate-600"
-                          placeholder="••••••••"
+                          placeholder={t('passwordPlaceholder')}
                         />
                       </div>
                       {setupErrors.password && <p className="text-[10px] text-red-400 font-bold">{setupErrors.password.message as string}</p>}
@@ -452,14 +480,14 @@ export default function Login() {
 
                     {/* Confirm Password input */}
                     <div className="space-y-1" id="setup-confirmpassword-group">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Confirm Password</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">{t('confirmPasswordLabel')}</label>
                       <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...registerSetup('confirmPassword')}
                           type="password" 
                           className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-xs font-semibold text-white placeholder-slate-600"
-                          placeholder="••••••••"
+                          placeholder={t('passwordPlaceholder')}
                         />
                       </div>
                       {setupErrors.confirmPassword && <p className="text-[10px] text-red-400 font-bold">{setupErrors.confirmPassword.message as string}</p>}
@@ -477,7 +505,7 @@ export default function Login() {
                       ) : (
                         <>
                           <ShieldCheck className="w-4 h-4" />
-                          Register Super Admin
+                          {t('registerBtn')}
                         </>
                       )}
                     </button>
@@ -486,22 +514,22 @@ export default function Login() {
               ) : (
                 <>
                   <div className="text-center mb-8" id="form-header">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">System Login</h2>
-                    <p className="text-[#978C21] text-[10px] font-black uppercase tracking-widest mt-1">Authorized Access Console</p>
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">{t('systemLoginTitle')}</h2>
+                    <p className="text-[#978C21] text-[10px] font-bold uppercase tracking-widest mt-1">{t('systemLoginSub')}</p>
                   </div>
 
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" id="credential-form">
                     
                     {/* Employee ID input */}
                     <div className="space-y-2" id="username-field-group">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block animate-pulse">Employee Identity</label>
+                      <label className="text-[10px] font-bold text-slate-300 uppercase tracking-widest block">{t('loginEmpIdLabel')}</label>
                       <div className="relative group">
                         <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...register('username')}
                           type="text" 
                           className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-sm font-semibold text-white placeholder-slate-500 uppercase tracking-wider"
-                          placeholder="EX: RM001 or ADMIN"
+                          placeholder={t('loginEmpIdPlaceholder')}
                           autoComplete="off"
                         />
                       </div>
@@ -510,14 +538,14 @@ export default function Login() {
 
                     {/* Password input */}
                     <div className="space-y-2" id="password-field-group">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block animate-pulse">Security Credentials</label>
+                      <label className="text-[10px] font-bold text-slate-300 uppercase tracking-widest block">{t('loginPasswordLabel')}</label>
                       <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#978C21] transition-colors" />
                         <input 
                           {...register('password')}
                           type="password" 
                           className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#978C21]/20 focus:border-[#978C21] transition-all text-sm font-semibold text-white placeholder-slate-600"
-                          placeholder="••••••••"
+                          placeholder={t('loginPasswordPlaceholder')}
                         />
                       </div>
                       {errors.password && <p className="text-xs text-red-400 font-bold">{errors.password.message as string}</p>}
@@ -535,7 +563,7 @@ export default function Login() {
                       ) : (
                         <>
                           <LogIn className="w-4 h-4" />
-                          Authenticate Console
+                          {t('loginSubmitBtn')}
                         </>
                       )}
                     </button>
@@ -551,7 +579,7 @@ export default function Login() {
                   className="text-xs text-slate-400 hover:text-[#978C21] transition-colors font-bold uppercase tracking-widest flex items-center gap-2 cursor-pointer"
                   id="back-trigger"
                 >
-                  <ArrowLeft className="w-3 h-3" /> Return to Welcome
+                  <ArrowLeft className="w-3 h-3" /> {t('backToMainBtn')}
                 </button>
               </div>
 

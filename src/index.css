@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
   --color-primary: #978C21;
   --color-brand-blue: #0359B3;
   --color-brand-accent: #026A8B;
@@ -49,3 +49,70 @@
     @apply bg-slate-200 rounded-full hover:bg-slate-300;
   }
 }
+
+/* Beautiful Org Chart Tree Connectors */
+.org-tree {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+}
+.org-tree ul {
+  padding-top: 24px;
+  position: relative;
+  transition: all 0.3s;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+.org-tree li {
+  text-align: center;
+  list-style-type: none;
+  position: relative;
+  padding: 24px 8px 0 8px;
+  transition: all 0.3s;
+}
+/* Connector lines */
+.org-tree li::before, .org-tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  border-top: 2px solid #94a3b8; /* slate-400 */
+  width: 50%;
+  height: 24px;
+}
+.org-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid #94a3b8;
+}
+/* Disconnect first and last elements */
+.org-tree li:only-child::after, .org-tree li:only-child::before {
+  display: none;
+}
+.org-tree li:only-child {
+  padding-top: 0;
+}
+.org-tree li:first-child::before, .org-tree li:last-child::after {
+  border: 0 none;
+}
+.org-tree li:last-child::before {
+  border-right: 2px solid #94a3b8;
+  border-radius: 0 6px 0 0;
+}
+.org-tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+/* Vertical down lines from parents */
+.org-tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #94a3b8;
+  width: 0;
+  height: 24px;
+  transform: translateX(-50%);
+}
+

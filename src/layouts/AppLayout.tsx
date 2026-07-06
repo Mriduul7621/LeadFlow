@@ -31,6 +31,25 @@ import { syncService } from '../services/syncService';
 import { adminService } from '../services/adminService';
 import { userService } from '../services/userService';
 import { toast } from 'sonner';
+import { useTranslation } from '../utils/translations';
+
+const labelToTranslationKey: Record<string, string> = {
+  'Dashboard': 'navDashboard',
+  'Lead Generate': 'navLeadGenerate',
+  'Lead Upload': 'navLeadUpload',
+  'All Leads': 'navAllLeads',
+  'Lead Tracking': 'navLeadTracking',
+  'Execution Intell.': 'navExecutionIntell',
+  'NCP Progress': 'navNcpProgress',
+  'Trend Charts': 'navTrendCharts',
+  'Campaign Breakdown': 'navCampaignBreakdown',
+  'Follow-up Strategy': 'navFollowUpStrategy',
+  'Task Calendar': 'navTaskCalendar',
+  'Team Progress': 'navTeamProgress',
+  'User Management': 'navUserManagement',
+  'Settings': 'navSettings',
+};
+
 
 const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', roles: Object.values(UserRole) },
@@ -43,12 +62,14 @@ const menuItems = [
   { label: 'Trend Charts', icon: Target, path: '/trend-charts', roles: [UserRole.ADMIN, UserRole.RO, UserRole.RM] },
   { label: 'Campaign Breakdown', icon: PieIcon, path: '/campaign-breakdown', roles: [UserRole.ADMIN, UserRole.RO, UserRole.RM] },
   { label: 'Follow-up Strategy', icon: History, path: '/follow-up', roles: Object.values(UserRole) },
+  { label: 'Task Calendar', icon: Calendar, path: '/task-calendar', roles: Object.values(UserRole) },
   { label: 'Team Progress', icon: Users, path: '/team', roles: [UserRole.ADMIN, UserRole.RM, UserRole.ASM, UserRole.BDM, UserRole.BUSINESS_EXECUTIVE, UserRole.BUSINESS_HEAD] },
   { label: 'User Management', icon: Users, path: '/users', roles: [UserRole.ADMIN] },
   { label: 'Settings', icon: Settings, path: '/settings', roles: Object.values(UserRole) },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { t, language, setLanguage } = useTranslation();
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -410,7 +431,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-white" : "group-hover:text-[#978C21]")} />
-                {isSidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                {isSidebarOpen && <span className="whitespace-nowrap">{t(labelToTranslationKey[item.label] as any) || item.label}</span>}
               </Link>
             );
           })}
@@ -470,7 +491,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       )}
                     >
                       <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
+                      <span>{t(labelToTranslationKey[item.label] as any) || item.label}</span>
                     </Link>
                   );
                 })}
@@ -517,6 +538,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
              </div>
              
+             <div className="h-6 w-px bg-slate-100 mx-2" />
+
+             {/* Premium Language Switcher inside App Layout Header */}
+             <div className="flex items-center gap-1 bg-slate-100 border border-slate-200/50 p-1 rounded-full shadow-inner" id="layout-language-switcher">
+               <button
+                 type="button"
+                 onClick={() => setLanguage('en')}
+                 className={cn(
+                   "px-2.5 py-1 text-[8px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer",
+                   language === 'en'
+                     ? "bg-[#978C21] text-white shadow-sm"
+                     : "text-slate-400 hover:text-slate-600"
+                 )}
+               >
+                 EN
+               </button>
+               <button
+                 type="button"
+                 onClick={() => setLanguage('bn')}
+                 className={cn(
+                   "px-2.5 py-1 text-[8px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer",
+                   language === 'bn'
+                     ? "bg-[#978C21] text-white shadow-sm"
+                     : "text-slate-400 hover:text-slate-600"
+                 )}
+               >
+                 BN
+               </button>
+             </div>
+
              <div className="h-6 w-px bg-slate-100 mx-2" />
 
              <div className="flex items-center gap-4">

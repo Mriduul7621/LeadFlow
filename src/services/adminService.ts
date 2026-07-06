@@ -24,6 +24,7 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermission[] = [
       '/trend-charts': true,
       '/campaign-breakdown': true,
       '/follow-up': true,
+      '/task-calendar': true,
       '/team': true,
       '/users': true,
       '/settings': true
@@ -44,7 +45,8 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
       view_trend_chart: true, 
       view_campaign_pie: true, 
       view_critical_alerts: true, 
-      view_agent_table: true 
+      view_agent_table: true,
+      view_task_calendar: true
     },
     lead_generate: { view: true, create: true },
     lead_upload: { view: true, upload: true, delete: true },
@@ -54,6 +56,7 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
     trend_charts: { view: true },
     campaign_breakdown: { view: true },
     follow_up_strategy: { view: true },
+    task_calendar: { view: true },
     team_progress: { view: true },
     user_management: {
       view: true,
@@ -97,6 +100,7 @@ export function ensureFeaturePermissions(role: RolePermission): RolePermission {
         else if (feat === 'trend_charts') route = '/trend-charts';
         else if (feat === 'campaign_breakdown') route = '/campaign-breakdown';
         else if (feat === 'follow_up_strategy') route = '/follow-up';
+        else if (feat === 'task_calendar') route = '/task-calendar';
         else if (feat === 'team_progress') route = '/team';
         else if (feat === 'user_management') route = '/users';
         else if (feat === 'settings_control') route = '/settings';

@@ -58,7 +58,8 @@ const APP_FEATURES_METADATA: FeatureMeta[] = [
       { key: 'view_trend_chart', label: 'View Daily Campaign Trend Chart', desc: 'Renders campaign generation volume trends.' },
       { key: 'view_campaign_pie', label: 'View Campaign Volume breakdown', desc: 'Shows campaign performance pie chart and listing.' },
       { key: 'view_critical_alerts', label: 'View Critical Alerts Panel', desc: 'Displays alarms & pending alert metrics.' },
-      { key: 'view_agent_table', label: 'View Executive Rankings', desc: 'Renders agent ranking tables & individual details.' }
+      { key: 'view_agent_table', label: 'View Executive Rankings', desc: 'Renders agent ranking tables & individual details.' },
+      { key: 'view_task_calendar', label: 'View Task Calendar on Dashboard', desc: 'Renders the Task Calendar view at the bottom of the main dashboard.' }
     ]
   },
   {
@@ -83,7 +84,8 @@ const APP_FEATURES_METADATA: FeatureMeta[] = [
     label: 'Lead Tracking & Pipeline',
     desc: 'Analyze target lists, followup pipelines & view files.',
     suboptions: [
-      { key: 'status_update', label: 'Modify Tracking Statuses', desc: 'Unlocks transitioning statuses and saving remarks.' }
+      { key: 'status_update', label: 'Modify Tracking Statuses', desc: 'Unlocks transitioning statuses and saving remarks.' },
+      { key: 'view_all_leads_tab', label: 'Access All Leads Tab', desc: 'Permits viewing the All Leads tab in sidebar/navigation menu.' }
     ]
   },
   {
@@ -110,6 +112,11 @@ const APP_FEATURES_METADATA: FeatureMeta[] = [
     key: 'follow_up_strategy',
     label: 'Follow Up Strategy',
     desc: 'Review follow-up cadences and next call set lists.'
+  },
+  {
+    key: 'task_calendar',
+    label: 'Task Calendar',
+    desc: 'Interactive monthly task calendar supporting Year, Month, Week and Day views.'
   },
   {
     key: 'team_progress',
@@ -329,7 +336,8 @@ export default function UserManagement() {
         view_trend_chart: false, 
         view_campaign_pie: false, 
         view_critical_alerts: false, 
-        view_agent_table: false 
+        view_agent_table: false,
+        view_task_calendar: false
       },
       lead_generate: { view: false, create: false },
       lead_upload: { view: false, upload: false, delete: false },
@@ -380,7 +388,7 @@ export default function UserManagement() {
           '/': roleFormFeatures?.dashboard?.view ?? false,
           '/leads/new': roleFormFeatures?.lead_generate?.view ?? false,
           '/leads/upload': roleFormFeatures?.lead_upload?.view ?? false,
-          '/leads/all': roleFormFeatures?.lead_tracking?.view ?? false,
+          '/leads/all': roleFormFeatures?.lead_tracking?.view_all_leads_tab ?? false,
           '/leads': roleFormFeatures?.lead_tracking?.view ?? false,
           '/execution-intelligence': roleFormFeatures?.execution_intelligence?.view ?? false,
           '/ncp-progress': roleFormFeatures?.ncp_progress?.view ?? false,
@@ -652,8 +660,8 @@ export default function UserManagement() {
       // ----------------------------------------------------
       toast.info('Generating dynamic Materialized reporting chains...', { duration: 4000 });
 
-      // Gather all users assigned to activeHierDeptId
-      const deptUsers = users.filter(u => (u as any).departmentId === activeHierDeptId);
+      // Gather all users to ensure their reporting chains are updated based on the active tree structure
+      const deptUsers = users;
 
       for (const u of deptUsers) {
         const empId = u.employeeId;
@@ -716,9 +724,8 @@ export default function UserManagement() {
     // Find children of this node
     const children = hierLayers.filter(l => l.parentId === node.id);
 
-    // Find matched employees with this node's role in this department
+    // Find matched employees with this node's role
     const matchedEmployees = users.filter(u =>
-      (u as any).departmentId === activeHierDeptId &&
       u.role === node.roleId
     );
 
@@ -739,47 +746,47 @@ export default function UserManagement() {
     const availableChildRoles = roles.filter(r => !prohibitedRoleIds.includes(r.roleId));
 
     return (
-      <div key={node.id} className="relative mt-5 last:mb-2">
+      <div key={node.id} className="relative mt-5 last:mb-2 pl-6 animate-in fade-in duration-200">
         {/* Connection flow lines */}
         {depth > 0 && (
-          <div className="absolute -left-5 top-0 bottom-0 border-l border-slate-300 w-5 h-6 border-b rounded-bl-md pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 border-l border-dashed border-slate-300 w-6 h-10 border-b rounded-bl-md pointer-events-none" />
         )}
 
         <div className={cn(
-          "bg-white border border-slate-200 p-4.5 space-y-4 transition-all relative rounded-sm shadow-xs",
-          depth === 0 ? "border-l-4 border-l-[#978C21]" : "border-l-4 border-l-slate-400"
+          "bg-white border p-6 space-y-5 transition-all relative rounded-md shadow-sm hover:shadow-md",
+          depth === 0 ? "border-l-4 border-l-[#978C21] border-slate-200" : "border-l-4 border-l-slate-400 border-slate-200"
         )}>
           {/* Node Meta bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
             <div className="flex items-center gap-3">
-              <div className="h-6 w-6 rounded-sm bg-slate-950 font-mono text-[9px] text-white flex items-center justify-center font-black">
-                L{depth + 1}
+              <div className="h-7 w-7 rounded-full bg-slate-900 text-[10px] text-white flex items-center justify-center font-bold font-sans">
+                {depth + 1}
               </div>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#978C21] italic leading-none block">
-                  {depth === 0 ? '🏆 Master Administrator / Leader Node' : `Level ${depth + 1} Dynamic reporting Node`}
+                <span className="text-[11px] font-bold text-[#978C21] block">
+                  {depth === 0 ? '🏆 প্রধান অ্যাডমিন / লিডার নোড (Top Leader Node)' : `ধাপ ${depth + 1} রিপোর্টিং নোড (Level ${depth + 1} Reporting Node)`}
                 </span>
-                <span className="text-[8px] font-mono text-slate-400 uppercase font-bold tracking-wider block mt-0.5">
-                  ID: {node.id?.toUpperCase()}
+                <span className="text-[9px] text-slate-400 block mt-0.5 font-sans font-medium">
+                  Node ID: {node.id?.toUpperCase()}
                 </span>
               </div>
             </div>
 
             {/* Target Node Role Selector */}
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic font-bold">Role:</span>
+              <span className="text-xs text-slate-500 font-medium">নির্ধারিত পদবি (Assigned Role):</span>
               {depth === 0 ? (
                 <select
                   value={node.roleId}
                   onChange={(e) => handleRootRoleChange(e.target.value)}
-                  className="px-3 py-1 bg-slate-50 border border-slate-200 focus:border-[#978C21] outline-none text-[10px] uppercase font-black italic tracking-widest text-slate-700 cursor-pointer"
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 focus:border-[#978C21] focus:bg-white outline-none text-[11px] font-bold text-slate-700 cursor-pointer rounded-sm"
                 >
                   {roles.map(r => (
                     <option key={r.roleId} value={r.roleId}>{r.roleName}</option>
                   ))}
                 </select>
               ) : (
-                <span className="px-2.5 py-1 bg-[#978C21]/10 text-[#978C21] text-[10px] font-black tracking-widest uppercase italic bg-slate-50 border border-slate-150">
+                <span className="px-3 py-1 bg-amber-50 text-[#978C21] border border-amber-200 text-[11px] font-bold rounded-sm uppercase">
                   {roles.find(r => r.roleId === node.roleId)?.roleName || node.roleId.toUpperCase()}
                 </span>
               )}
@@ -787,18 +794,18 @@ export default function UserManagement() {
           </div>
 
           {/* User MultiSelector */}
-          <div className="space-y-1.5 pt-1">
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic font-bold flex items-center justify-between">
-              <span>Assigned Employees ({matchedEmployees.length} registered in dept)</span>
-              <span className="text-[8px] font-normal normal-case tracking-normal text-slate-400">Click to toggle reporting status</span>
+          <div className="space-y-2 pt-1">
+            <label className="text-[11px] font-bold text-slate-600 flex items-center justify-between">
+              <span>কর্মচারী নির্বাচন করুন (Assigned Employees - {matchedEmployees.length} registered under this role):</span>
+              <span className="text-[9px] text-slate-400 font-normal">ক্লিক করে রিপোর্ট সক্রিয় বা নিষ্ক্রিয় করুন</span>
             </label>
 
             {matchedEmployees.length === 0 ? (
-              <p className="text-[8px] text-slate-450 font-bold uppercase tracking-wider leading-relaxed bg-slate-50 border border-dashed border-slate-200/80 p-3">
-                ⚠️ No users are currently assigned to the Role "{node.roleId.toUpperCase()}" in this department (Step 3).
+              <p className="text-[11px] text-slate-500 leading-relaxed bg-amber-50/50 border border-dashed border-amber-200 p-3.5 rounded-sm">
+                ⚠️ "{node.roleId.toUpperCase()}" পদবির কোনো কর্মচারী এখনো যুক্ত করা হয়নি। অনুগ্রহ করে ৩ নম্বর ধাপে কর্মচারী যোগ করুন। (No employees assigned to this role).
               </p>
             ) : (
-              <div className="flex flex-wrap gap-1.5 p-3.5 border border-slate-100 bg-[#FBFAF8] rounded-sm max-h-36 overflow-y-auto">
+              <div className="flex flex-wrap gap-2 p-3.5 border border-slate-100 bg-[#FBFAF8] rounded-sm max-h-36 overflow-y-auto">
                 {matchedEmployees.map((emp) => {
                   const active = (node.employeeIds || []).includes(emp.employeeId);
                   return (
@@ -807,14 +814,14 @@ export default function UserManagement() {
                       type="button"
                       onClick={() => handleToggleEmployeeInTreeLayer(node.id!, emp.employeeId)}
                       className={cn(
-                        "px-2.5 py-1.5 text-[8px] font-mono uppercase tracking-wider font-black flex items-center gap-1.5 cursor-pointer transition-all border",
+                        "px-3 py-2 text-[10px] font-medium flex items-center gap-1.5 cursor-pointer transition-all border rounded-sm",
                         active
-                          ? "bg-[#978C21] border-[#978C21] text-white shadow-sm shadow-[#978C21]/15"
-                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                          ? "bg-[#978C21] border-[#978C21] text-white shadow-sm"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                       )}
                     >
                       {emp.name} ({emp.employeeId})
-                      {active && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                      {active && <Check className="w-3 h-3 stroke-[3]" />}
                     </button>
                   );
                 })}
@@ -823,13 +830,13 @@ export default function UserManagement() {
           </div>
 
           {/* Child Toggles matrix (Bengali requirement 1 & 2) */}
-          <div className="border-t border-slate-100 pt-3.5 space-y-2">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic block leading-none">
-              Configure reporting sub-roles under {roles.find(r => r.roleId === node.roleId)?.roleName || node.roleId.toUpperCase()}
+          <div className="border-t border-slate-100 pt-4 space-y-2">
+            <span className="text-[11px] font-bold text-slate-600 block leading-none">
+              অধীনস্থ পদবি নির্বাচন করুন (Configure reporting sub-roles under {roles.find(r => r.roleId === node.roleId)?.roleName || node.roleId.toUpperCase()}):
             </span>
 
             {availableChildRoles.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 bg-slate-50/50 p-2.5 border border-slate-200/60 rounded-sm">
+              <div className="flex flex-wrap gap-2 bg-slate-50/50 p-3 border border-slate-200/60 rounded-sm">
                 {availableChildRoles.map(r => {
                   const isReporting = children.some(c => c.roleId === r.roleId);
                   return (
@@ -838,25 +845,25 @@ export default function UserManagement() {
                       type="button"
                       onClick={() => handleToggleChildRoleInNode(node.id!, r.roleId)}
                       className={cn(
-                        "px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-1.5 border",
+                        "px-3 py-2 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 border rounded-sm",
                         isReporting
-                          ? "bg-[#978C21] border-[#978C21] text-white shadow-xs font-black"
-                          : "bg-white border-slate-200 text-slate-550 hover:border-[#978C21] hover:text-[#978C21]"
+                          ? "bg-[#978C21] border-[#978C21] text-white shadow-sm"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-[#978C21] hover:text-[#978C21]"
                       )}
                     >
                       <span>{r.roleName}</span>
                       {isReporting ? (
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        <Check className="w-3 h-3 stroke-[3]" />
                       ) : (
-                        <Plus className="w-2.5 h-2.5 text-slate-400" />
+                        <Plus className="w-3 h-3 text-slate-400" />
                       )}
                     </button>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-[8px] text-slate-400 uppercase tracking-widest italic bg-slate-50/30 p-2 border border-dashed border-slate-200 rounded-sm">
-                No child roles are available (all active organizational roles are matched in the parent chain).
+              <p className="text-[10px] text-slate-400 italic bg-slate-50/30 p-2 border border-dashed border-slate-200 rounded-sm">
+                আর কোনো অধীনস্থ পদবি উপলব্ধ নেই (No further child roles available).
               </p>
             )}
           </div>
