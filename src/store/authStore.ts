@@ -2,12 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '../types';
 
+const AUTH_STORAGE_KEY = 'leadflow-auth';
+
 interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isInitialized: boolean;
   isOfflineMode: boolean;
-  login: (user: User, isOffline?: boolean) => void;
+  login: (user: User, isOffline?: boolean, token?: string) => void;
   logout: () => void;
   setInitialized: (val: boolean) => void;
   setOfflineMode: (val: boolean) => void;
@@ -17,25 +20,29 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
       isInitialized: false,
       isOfflineMode: false,
-      login: (user, isOffline = false) => {
+      login: (user, isOffline = false, token = null) => {
         localStorage.setItem('leadflow_last_activity', Date.now().toString());
-        set({ user, isAuthenticated: true, isOfflineMode: isOffline });
+        const authSnapshot = { user, token, isAuthenticated: true, isOfflineMode: isOffline };
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authSnapshot));
+        set({ user, token, isAuthenticated: true, isOfflineMode: isOffline });
       },
       logout: () => {
-        localStorage.removeItem('leadflow-auth');
+        localStorage.removeItem(AUTH_STORAGE_KEY);
         localStorage.removeItem('leadflow_last_activity');
-        set({ user: null, isAuthenticated: false, isOfflineMode: false });
+        set({ user: null, token: null, isAuthenticated: false, isOfflineMode: false });
       },
       setInitialized: (val) => set({ isInitialized: val }),
       setOfflineMode: (val) => set({ isOfflineMode: val }),
     }),
     {
-      name: 'leadflow-auth',
+      name: AUTH_STORAGE_KEY,
       partialize: (state) => ({
         user: state.user,
+        token: state.token,
         isAuthenticated: state.isAuthenticated,
         isOfflineMode: state.isOfflineMode,
       }),

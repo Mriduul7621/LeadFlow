@@ -7,7 +7,6 @@ import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MOCK_USERS } from '../mock/data';
 import { localDb } from '../services/localDb';
 import { userService } from '../services/userService';
 import { syncService } from '../services/syncService';
@@ -114,7 +113,8 @@ export default function Login() {
         designation: 'Administrator',
         status: 'Active',
         createdDate: new Date().toISOString(),
-        password: data.password
+        password: data.password,
+        mustChangePassword: false,
       };
 
       // 1. Create in local state database first
@@ -142,6 +142,20 @@ export default function Login() {
     try {
       const empId = data.username.toUpperCase().trim();
       const enteredPassword = data.password;
+
+      try {
+        const authResponse = await userService.login(empId, enteredPassword, false);
+        if (authResponse?.success && authResponse.user) {
+          const secureUser = { ...authResponse.user, password: enteredPassword } as User;
+          login(secureUser, false, authResponse.token);
+          localDb.createUser(secureUser);
+          toast.success(t('welcomeMessage', { name: secureUser.name }));
+          navigate('/');
+          return;
+        }
+      } catch (authErr: any) {
+        console.warn('Secure login failed, falling back to local credentials.', authErr);
+      }
 
       // Master Admin Bypass Control
       if (empId === 'ADMIN' && enteredPassword === 'shanta123') {
@@ -173,7 +187,7 @@ export default function Login() {
           console.warn("Could not seed online Admin in cloud:", fErr);
         }
 
-        login(masterAdmin, false);
+        login(masterAdmin, false, null);
         toast.success(t('masterAdminProtocol'));
         syncService.syncToDatabase();
         navigate('/');
@@ -245,7 +259,7 @@ export default function Login() {
         }
 
         // Log in to online session
-        login(matchedUser, false);
+        login(matchedUser, false, null);
         toast.success(t('welcomeMessage', { name: matchedUser.name }));
         
         // Push any local storage offline data into PostgreSQL Cloud Database synchronously

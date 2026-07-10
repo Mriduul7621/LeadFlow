@@ -107,15 +107,9 @@ export default function Settings() {
 
     setPasswordLoading(true);
     try {
-      const dbUser = await userService.getUser(user.id);
-      const actualPassword = dbUser?.password || 'shanta123';
+      await userService.changePassword(currentPassword, newPassword);
 
-      if (currentPassword !== actualPassword) {
-        toast.error('Current password is incorrect');
-        return;
-      }
-
-      const updatedUser = { ...user, password: newPassword };
+      const updatedUser = { ...user, password: newPassword, mustChangePassword: false };
       await userService.updateUser(user.id, updatedUser);
       login(updatedUser, isOfflineMode);
 

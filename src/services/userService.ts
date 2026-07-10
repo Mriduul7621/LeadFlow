@@ -7,7 +7,7 @@ export const userService = {
     localDb.createUser(user);
 
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(user)
@@ -30,7 +30,7 @@ export const userService = {
     if (!existing) return true;
 
     try {
-      await fetch('/api/users', {
+      await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(existing)
@@ -56,6 +56,23 @@ export const userService = {
       console.warn('PostgreSQL get fallback to local db:', error);
     }
     return localDb.getUser(userId);
+  },
+
+  async login(employeeId: string, password: string, rememberMe = false) {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId, password, rememberMe })
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Authentication failed.');
+    }
+    return res.json();
+  },
+
+  async logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
   },
 
   async getAllUsers(): Promise<User[]> {
@@ -120,6 +137,19 @@ export const userService = {
     } catch (error) {
       console.warn('PostgreSQL delete user fallback to local db:', error);
     }
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    const res = await fetch('/api/auth/verify-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Password change failed.');
+    }
+    return res.json();
   },
 
   async checkAdminExists(): Promise<boolean> {

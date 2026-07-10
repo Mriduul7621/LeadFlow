@@ -2,6 +2,8 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { getPool, initializeDatabase } from './server/db.ts';
+import { hashPassword, registerAuthRoutes, authenticateRequest } from './server/auth.ts';
+import { securityHeaders, apiLimiter, sanitizeInput, validateRequest, errorHandler } from './server/middleware.ts';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
@@ -11,6 +13,12 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(securityHeaders);
+app.use(apiLimiter);
+app.use(sanitizeInput);
+app.use(validateRequest);
+app.use(authenticateRequest);
 
 // Lazy Database Initializer Middleware for Serverless Compatibility
 let dbInitialized = false;
@@ -25,6 +33,8 @@ app.use(async (req, res, next) => {
   }
   next();
 });
+
+  registerAuthRoutes(app);
 
   // ==========================================
   // Supabase PostgreSQL API REST Routes (CRUD)
@@ -85,6 +95,7 @@ app.use(async (req, res, next) => {
     if (!pool) return res.json(req.body);
     try {
       const { id, name, employeeId, email, role, designation, status, createdDate, password } = req.body;
+      const hashedPassword = password ? await hashPassword(password) : password;
       const query = `
         INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -99,7 +110,7 @@ app.use(async (req, res, next) => {
           password = EXCLUDED.password
         RETURNING *
       `;
-      const values = [id, name, employeeId, email, role, designation, status, createdDate, password];
+      const values = [id, name, employeeId, email, role, designation, status, createdDate, hashedPassword];
       await pool.query(query, values);
       res.status(200).json(req.body);
     } catch (err: any) {
@@ -123,6 +134,7 @@ app.use(async (req, res, next) => {
       if (Array.isArray(localUsers)) {
         for (const user of localUsers) {
           const { id, name, employeeId, email, role, designation, status, createdDate, password } = user;
+          const hashedPassword = password ? await hashPassword(password) : password;
           const query = `
             INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -136,7 +148,7 @@ app.use(async (req, res, next) => {
               created_date = EXCLUDED.created_date,
               password = EXCLUDED.password
           `;
-          await pool.query(query, [id, name, employeeId, email, role, designation, status, createdDate, password]);
+          await pool.query(query, [id, name, employeeId, email, role, designation, status, createdDate, hashedPassword]);
           syncCount++;
         }
       }
@@ -1091,5 +1103,7 @@ app.use(async (req, res, next) => {
       console.log(`🚀 Full-Stack application running on http://0.0.0.0:${PORT}`);
     });
   }
+
+app.use(errorHandler);
 
 export default app;

@@ -77,6 +77,16 @@ export interface Permissions {
   }>;
 }
 
+export interface RolePermission {
+  roleId: string;
+  roleName: string;
+  isCustom?: boolean;
+  menuAccess?: Record<string, boolean>;
+  dataVisibility?: string;
+  actions?: Record<string, boolean>;
+  featurePermissions?: Record<string, Record<string, boolean>>;
+}
+
 export interface Team {
   id: string;
   name: string;

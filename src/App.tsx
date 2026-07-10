@@ -115,15 +115,25 @@ export default function App() {
   useSessionTimeout();
 
   React.useEffect(() => {
-    // 1. Trigger background data synchronization if authenticated
+    try {
+      const persisted = localStorage.getItem('leadflow-auth');
+      if (persisted) {
+        const parsed = JSON.parse(persisted);
+        if (parsed?.state?.user && parsed?.state?.isAuthenticated) {
+          login(parsed.state.user, parsed?.state?.isOfflineMode || false, parsed?.state?.token || null);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not restore persisted auth session.', error);
+    }
+
     const state = useAuthStore.getState();
     if (state.isAuthenticated && state.user) {
       syncService.syncToDatabase();
     }
 
-    // 2. Manage authentication state changes
     setInitialized(true);
-  }, []);
+  }, [login, setInitialized]);
 
   return (
     <>
