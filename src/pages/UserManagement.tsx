@@ -1108,7 +1108,7 @@ export default function UserManagement() {
                               <button
                                 onClick={() => handleDeleteRole(r.roleId)}
                                 className="p-2 border border-red-150 hover:border-red-300 text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
-                                title="Delete Role"
+                                title="Remove Role"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1524,7 +1524,7 @@ export default function UserManagement() {
                                     <button
                                       onClick={() => handleDeleteUser(u.id, u.name)}
                                       className="p-2 border border-slate-100 hover:bg-red-50 text-red-500 rounded-sm hover:-translate-y-0.5 transition-all cursor-pointer"
-                                      title="Purge Profile"
+                                      title="Remove Profile"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -1550,7 +1550,7 @@ export default function UserManagement() {
               {/* Left sidebar: Department select descriptor */}
               <div className="lg:col-span-4 bg-[#FBFAF8] border border-slate-200 p-6 rounded-sm space-y-6">
                 <div className="space-y-1">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-[#978C21]">Hierarchy Workspace</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[#978C21]">Reporting Structure Workspace</h3>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Select targeting corporate department to architect reporting maps.</p>
                 </div>
 
@@ -1568,7 +1568,7 @@ export default function UserManagement() {
                 </div>
 
                 <div className="bg-white border border-slate-150 p-4 space-y-3.5">
-                  <h5 className="text-[10px] uppercase tracking-widest font-black text-slate-700 leading-none">Hierarchy Rules</h5>
+                  <h5 className="text-[10px] uppercase tracking-widest font-black text-slate-700 leading-none">Reporting Structure Rules</h5>
                   <ul className="space-y-2 text-[9px] text-slate-400 tracking-wider font-bold uppercase leading-normal">
                     <li className="flex items-start gap-1.5 text-slate-550">
                       <ChevronRight className="w-3.5 h-3.5 text-[#978C21] shrink-0" />
@@ -1594,7 +1594,7 @@ export default function UserManagement() {
               <div className="lg:col-span-8 bg-[#FBFAF8] border border-slate-200 p-6 rounded-sm space-y-6">
                 <div className="flex justify-between items-center pb-4 border-b border-slate-100">
                   <div className="space-y-1">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 leading-none">Chains Matrix architect</h3>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 leading-none">Reporting Matrix Architect</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dynamic layout editor per Department</p>
                   </div>
                   <span className="px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 text-[8px] font-mono font-black uppercase tracking-widest">
@@ -1619,7 +1619,7 @@ export default function UserManagement() {
                       onClick={handleSaveDepartmentHierarchyEngine}
                       className="w-full py-4.5 bg-[#978C21] hover:bg-[#83781C] text-white font-black text-xs uppercase tracking-widest italic transition-all shadow-xl shadow-[#978C21]/20 flex items-center justify-center gap-2 cursor-pointer mt-4"
                     >
-                      <Save className="w-4 h-4 text-white" /> Compile and Deploy Hierarchy Chains
+                      <Save className="w-4 h-4 text-white" /> Compile and Deploy Reporting Structure Chains
                     </button>
                   </div>
                 )}

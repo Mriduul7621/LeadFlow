@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { getPool, initializeDatabase } from './server/db.ts';
-import { hashPassword, registerAuthRoutes, authenticateRequest } from './server/auth.ts';
+import { hashPassword, registerAuthRoutes, authenticateRequest, requireRole } from './server/auth.ts';
 import { securityHeaders, apiLimiter, sanitizeInput, validateRequest, errorHandler } from './server/middleware.ts';
 import * as dotenv from 'dotenv';
 
@@ -65,7 +65,7 @@ app.use(async (req, res, next) => {
   });
 
   // Get all users
-  app.get('/api/users', async (req, res) => {
+  app.get('/api/users', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -90,7 +90,7 @@ app.use(async (req, res, next) => {
   });
 
   // Create or update user
-  app.post('/api/users', async (req, res) => {
+  app.post('/api/users', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -120,7 +120,7 @@ app.use(async (req, res, next) => {
   });
 
   // Sync users list
-  app.post('/api/users/sync', async (req, res) => {
+  app.post('/api/users/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -174,7 +174,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete user
-  app.delete('/api/users/:id', async (req, res) => {
+  app.delete('/api/users/:id', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -547,7 +547,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save/Upsert department
-  app.post('/api/departments', async (req, res) => {
+  app.post('/api/departments', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -568,7 +568,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete department
-  app.delete('/api/departments/:id', async (req, res) => {
+  app.delete('/api/departments/:id', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -581,7 +581,7 @@ app.use(async (req, res, next) => {
   });
 
   // Departments sync
-  app.post('/api/departments/sync', async (req, res) => {
+  app.post('/api/departments/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -650,7 +650,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save hierarchy
-  app.post('/api/hierarchies', async (req, res) => {
+  app.post('/api/hierarchies', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -673,7 +673,7 @@ app.use(async (req, res, next) => {
   });
 
   // Hierarchies sync
-  app.post('/api/hierarchies/sync', async (req, res) => {
+  app.post('/api/hierarchies/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -759,7 +759,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save/Upsert role
-  app.post('/api/roles', async (req, res) => {
+  app.post('/api/roles', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -786,7 +786,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete role
-  app.delete('/api/roles/:id', async (req, res) => {
+  app.delete('/api/roles/:id', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -799,7 +799,7 @@ app.use(async (req, res, next) => {
   });
 
   // Roles sync
-  app.post('/api/roles/sync', async (req, res) => {
+  app.post('/api/roles/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -892,7 +892,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save/Upsert team
-  app.post('/api/teams', async (req, res) => {
+  app.post('/api/teams', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -918,7 +918,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete team
-  app.delete('/api/teams/:id', async (req, res) => {
+  app.delete('/api/teams/:id', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -931,7 +931,7 @@ app.use(async (req, res, next) => {
   });
 
   // Teams sync
-  app.post('/api/teams/sync', async (req, res) => {
+  app.post('/api/teams/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {

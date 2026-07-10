@@ -22,12 +22,12 @@ import CampaignBreakdown from './pages/CampaignBreakdown';
 import TaskCalendar from './pages/TaskCalendar';
 import { useAuthStore } from './store/authStore';
 import { Toaster } from 'sonner';
-import { userService } from './services/userService';
 import { syncService } from './services/syncService';
 import { useSessionTimeout } from './hooks/useSessionTimeout';
+import { UserRole } from './types';
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] | string[] }) => {
+  const { isAuthenticated, isInitialized, user } = useAuthStore();
   
   if (!isInitialized) {
     return (
@@ -38,6 +38,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  if (allowedRoles && user) {
+    const normalizedUserRole = (user.role || '').toUpperCase();
+    const allowed = allowedRoles.some((role) => role.toUpperCase() === normalizedUserRole || normalizedUserRole === UserRole.ADMIN);
+    if (!allowed) {
+      return <Navigate to="/" replace />;
+    }
+  }
+
   return <AppLayout>{children}</AppLayout>;
 };
 
@@ -60,11 +69,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/leads/upload',
-    element: <ProtectedRoute><LeadUpload /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN]}><LeadUpload /></ProtectedRoute>,
   },
   {
     path: '/leads/all',
-    element: <ProtectedRoute><AllLeads /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN]}><AllLeads /></ProtectedRoute>,
   },
   {
     path: '/follow-up',
@@ -76,27 +85,27 @@ const router = createBrowserRouter([
   },
   {
     path: '/users',
-    element: <ProtectedRoute><UserManagement /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN]}><UserManagement /></ProtectedRoute>,
   },
   {
     path: '/team',
-    element: <ProtectedRoute><TeamHierarchy /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.RM, UserRole.ASM, UserRole.BDM, UserRole.BUSINESS_EXECUTIVE, UserRole.BUSINESS_HEAD]}><TeamHierarchy /></ProtectedRoute>,
   },
   {
     path: '/execution-intelligence',
-    element: <ProtectedRoute><ExecutionIntelligence /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.RO, UserRole.RM]}><ExecutionIntelligence /></ProtectedRoute>,
   },
   {
     path: '/ncp-progress',
-    element: <ProtectedRoute><NcpProgress /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.RO, UserRole.RM]}><NcpProgress /></ProtectedRoute>,
   },
   {
     path: '/trend-charts',
-    element: <ProtectedRoute><TrendCharts /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.RO, UserRole.RM]}><TrendCharts /></ProtectedRoute>,
   },
   {
     path: '/campaign-breakdown',
-    element: <ProtectedRoute><CampaignBreakdown /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.RO, UserRole.RM]}><CampaignBreakdown /></ProtectedRoute>,
   },
   {
     path: '/settings',

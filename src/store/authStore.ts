@@ -10,7 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isInitialized: boolean;
   isOfflineMode: boolean;
-  login: (user: User, isOffline?: boolean, token?: string) => void;
+  login: (user: User, isOffline?: boolean, token?: string | null) => void;
   logout: () => void;
   setInitialized: (val: boolean) => void;
   setOfflineMode: (val: boolean) => void;
@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isInitialized: false,
       isOfflineMode: false,
-      login: (user, isOffline = false, token = null) => {
+      login: (user, isOffline = false, token: string | null = null) => {
         localStorage.setItem('leadflow_last_activity', Date.now().toString());
         const authSnapshot = { user, token, isAuthenticated: true, isOfflineMode: isOffline };
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authSnapshot));
