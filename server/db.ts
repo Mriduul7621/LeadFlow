@@ -6,6 +6,7 @@ let pool: pg.Pool | null = null;
 export function getPool(): pg.Pool | null {
   if (!pool) {
     const rawConnectionString = process.env.DATABASE_URL;
+    console.log(process.env.DATABASE_URL);
     if (!rawConnectionString) {
       console.warn("⚠️ DATABASE_URL environment variable is not defined. Supabase PostgreSQL is not connected. Fallback to in-memory/local mock mode.");
       return null;
