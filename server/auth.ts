@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { createHmac } from 'crypto';
 import { z } from 'zod';
 import { getPool } from './db.ts';
 
@@ -48,6 +48,7 @@ interface SessionRecord {
 const sessions = new Map<string, SessionRecord>();
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 8);
 const REMEMBER_ME_TTL_MS = Number(process.env.REMEMBER_ME_TTL_MS || 1000 * 60 * 60 * 24 * 30);
+const JWT_SECRET = process.env.JWT_SECRET || 'leadflow-dev-secret-change-me';
 
 function sanitizeValue(value: string) {
   return value.replace(/[<>]/g, '').trim();
@@ -57,11 +58,37 @@ function normalizeRole(role?: string) {
   return String(role || 'RO').toUpperCase();
 }
 
-function createSessionToken() {
-  return randomBytes(24).toString('hex');
+function base64UrlEncode(value: string | Buffer) {
+  const encoded = Buffer.isBuffer(value) ? value.toString('base64') : Buffer.from(value).toString('base64');
+  return encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function getSessionToken(req: Request) {
+function createJwt(payload: Record<string, unknown>, expiresInMs: number) {
+  const header = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body = base64UrlEncode(JSON.stringify({ ...payload, iat: Math.floor(Date.now() / 1000), exp: Math.floor((Date.now() + expiresInMs) / 1000) }));
+  const signature = base64UrlEncode(createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest());
+  return `${header}.${body}.${signature}`;
+}
+
+function verifyJwt(token: string) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [header, payload, signature] = parts;
+  const expectedSignature = base64UrlEncode(createHmac('sha256', JWT_SECRET).update(`${header}.${payload}`).digest());
+  if (expectedSignature !== signature) return null;
+
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>;
+    if (typeof decoded.exp === 'number' && decoded.exp * 1000 <= Date.now()) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function getToken(req: Request) {
   const authHeader = req.get('authorization') || '';
   const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
   if (bearerMatch) {
@@ -78,26 +105,39 @@ function destroySession(token: string) {
   sessions.delete(token);
 }
 
+function isBcryptHash(value: string) {
+  return /^\$2[aby]\$\d{2}\$/.test(value || '');
+}
+
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
 
 export async function verifyPassword(password: string, hash: string) {
   if (!hash) return false;
+  if (!isBcryptHash(hash)) {
+    return hash === password;
+  }
   return bcrypt.compare(password, hash);
 }
 
 export function authenticateRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const path = req.path;
-  const isPublicPath = path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/auth/logout' || path === '/api/auth/me' || path === '/api/auth/verify-password' || path === '/api/auth/validate-password' || path === '/api/db-status' || path === '/api/users/check-admin';
+  const isPublicPath = path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/db-status' || path === '/api/users/check-admin';
 
   if (isPublicPath || req.method === 'OPTIONS') {
     return next();
   }
 
-  const token = getSessionToken(req);
+  const token = getToken(req);
   if (!token) {
     return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const jwtPayload = verifyJwt(token);
+  if (!jwtPayload) {
+    destroySession(token);
+    return res.status(401).json({ error: 'Session expired or invalid.' });
   }
 
   const session = sessions.get(token);
@@ -110,7 +150,7 @@ export function authenticateRequest(req: AuthenticatedRequest, res: Response, ne
     return res.status(401).json({ error: 'Session expired.' });
   }
 
-  req.user = { id: session.userId, employeeId: session.employeeId, role: session.role };
+  req.user = { id: String(jwtPayload.sub || session.userId), employeeId: String(jwtPayload.employeeId || session.employeeId), role: String(jwtPayload.role || session.role) };
   next();
 }
 
@@ -156,13 +196,23 @@ export function registerAuthRoutes(app: Express) {
 
       const row = result.rows[0];
       const storedHash = row.password || '';
-      const passwordMatches = await verifyPassword(cleanPassword, storedHash);
+      let passwordMatches = await verifyPassword(cleanPassword, storedHash);
+
+      if (!passwordMatches && !isBcryptHash(storedHash) && storedHash === cleanPassword) {
+        passwordMatches = true;
+      }
+
       if (!passwordMatches) {
         return res.status(401).json({ error: 'Invalid employee ID or password.' });
       }
 
+      if (!isBcryptHash(storedHash) && storedHash === cleanPassword) {
+        const migratedHash = await hashPassword(cleanPassword);
+        await pool.query('UPDATE users SET password = $1 WHERE id = $2', [migratedHash, row.id]);
+      }
+
       const ttl = rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
-      const token = createSessionToken();
+      const token = createJwt({ sub: row.id, employeeId: row.employee_id, role: row.role || 'RO' }, ttl);
       const session: SessionRecord = {
         token,
         userId: row.id,
@@ -232,12 +282,13 @@ export function registerAuthRoutes(app: Express) {
   });
 
   app.get('/api/auth/me', (req: AuthenticatedRequest, res) => {
-    const token = getSessionToken(req);
+    const token = getToken(req);
     if (!token) {
       return res.status(401).json({ error: 'Not signed in.' });
     }
+    const jwtPayload = verifyJwt(token);
     const session = sessions.get(token);
-    if (!session || session.expiresAt <= Date.now()) {
+    if (!jwtPayload || !session || session.expiresAt <= Date.now()) {
       destroySession(token);
       return res.status(401).json({ error: 'Session expired.' });
     }
@@ -245,7 +296,7 @@ export function registerAuthRoutes(app: Express) {
   });
 
   app.post('/api/auth/logout', (req: AuthenticatedRequest, res) => {
-    const token = getSessionToken(req);
+    const token = getToken(req);
     if (token) {
       destroySession(token);
     }
