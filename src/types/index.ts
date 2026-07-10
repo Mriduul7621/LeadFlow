@@ -22,40 +22,46 @@ export type LeadStatus =
   | 'Not Interested';
 
 export interface User {
+  // Identity
   id: string;
-  name: string;
   employeeId: string;
-  email: string;
+
+  // Legacy fields (Keep for existing code)
+  name: string;
   contact?: string;
-  departmentId?: string;
-  role: UserRole | string; // Permit string role dynamically
-  designation?: string;
-  password?: string;
-  avatarUrl?: string;
-  managerId?: string;
-  teamId?: string; // Track which team user belongs to
+  role: UserRole | string;
   status: 'Active' | 'Inactive';
   createdDate: string;
-  mustChangePassword?: boolean;
+  departmentId?: string;
+  managerId?: string;
+  teamId?: string;
   reportingChain?: string[];
   subordinates?: string[];
-}
 
-export interface RolePermission {
-  roleId: string; // Clearance identifier / slug
-  roleName: string; // Clearance Level Name
-  isCustom?: boolean; // Indicate if the role was created dynamically
-  menuAccess: Record<string, boolean>; // Menu paths permitted e.g. { '/': true, ... }
-  dataVisibility: 'Own' | 'Team' | 'Department' | 'Organization' | 'DownTeam' | 'FullTeam';
-  actions: {
-    view: boolean;
-    create: boolean;
-    edit: boolean;
-    delete: boolean;
-    approve: boolean;
-    upload?: boolean;
-  };
-  featurePermissions?: Record<string, Record<string, boolean>>; // Per-feature functional permissions map
+  // Enterprise fields
+  fullName?: string;
+  email: string;
+  phone?: string;
+
+  designation?: string;
+
+  employmentStatus?: 'Active' | 'Inactive';
+  joiningDate?: string;
+
+  primaryDepartmentId?: string;
+  departmentIds?: string[];
+
+  primaryRoleId?: string;
+  roleIds?: string[];
+
+  reportingManagerId?: string;
+
+  password?: string;
+  mustChangePassword?: boolean;
+  avatarUrl?: string;
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Permissions {
