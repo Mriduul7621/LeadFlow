@@ -124,25 +124,35 @@ export default function App() {
   useSessionTimeout();
 
   React.useEffect(() => {
-    try {
+    const restoreSession = async () => {
+      try {
       const persisted = localStorage.getItem('leadflow-auth');
       if (persisted) {
         const parsed = JSON.parse(persisted);
-        if (parsed?.state?.user && parsed?.state?.isAuthenticated) {
-          login(parsed.state.user, parsed?.state?.isOfflineMode || false, parsed?.state?.token || null);
+        const snapshot = parsed?.state || parsed;
+        if (snapshot?.user && snapshot?.isAuthenticated && snapshot?.token) {
+          const response = await fetch('/api/auth/me');
+          if (!response.ok) {
+            logout();
+          } else {
+            login(snapshot.user, false, snapshot.token);
+          }
         }
       }
-    } catch (error) {
-      console.warn('Could not restore persisted auth session.', error);
-    }
+      } catch (error) {
+        console.warn('Could not restore persisted auth session.', error);
+        logout();
+      }
 
-    const state = useAuthStore.getState();
-    if (state.isAuthenticated && state.user) {
-      syncService.syncToDatabase();
-    }
+      const state = useAuthStore.getState();
+      if (state.isAuthenticated && state.user) {
+        syncService.syncToDatabase();
+      }
 
-    setInitialized(true);
-  }, [login, setInitialized]);
+      setInitialized(true);
+    };
+    restoreSession();
+  }, [login, logout, setInitialized]);
 
   return (
     <>

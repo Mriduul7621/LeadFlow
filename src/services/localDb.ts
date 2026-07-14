@@ -185,7 +185,7 @@
       try {
         const data = localStorage.getItem(KEYS.USERS);
         if (!data) {
-          const initialized = MOCK_USERS.map(u => ({ ...u, password: 'shanta123' }));
+          const initialized = MOCK_USERS.map(u => ({ ...u, password: undefined }));
           localStorage.setItem(KEYS.USERS, JSON.stringify(initialized));
           return initialized;
         }
@@ -218,13 +218,13 @@
         // Auto-restore any missing mock users from the template configuration to prevent cross-browser login failure
         for (const mock of MOCK_USERS) {
           if (!users.some(u => u.employeeId === mock.employeeId)) {
-            users.push({ ...mock, password: mock.password || 'shanta123' });
+            users.push({ ...mock, password: undefined });
             changed = true;
           }
         }
         users = users.map(u => {
-          if (!u.password) {
-            u.password = 'shanta123';
+          if (u.password !== undefined) {
+            delete u.password;
             changed = true;
           }
           return u;
@@ -235,14 +235,15 @@
         return users;
       } catch (e) {
         console.warn('Error reading or parsing users from local storage, resetting to default:', e);
-        const initialized = MOCK_USERS.map(u => ({ ...u, password: 'shanta123' }));
+        const initialized = MOCK_USERS.map(u => ({ ...u, password: undefined }));
         localStorage.setItem(KEYS.USERS, JSON.stringify(initialized));
         return initialized;
       }
     },
 
     saveUsers(users: User[]) {
-      localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+      const sanitized = users.map(user => ({ ...user, password: undefined }));
+      localStorage.setItem(KEYS.USERS, JSON.stringify(sanitized));
     },
 
     getUser(id: string): User | null {
@@ -255,11 +256,12 @@
 
     createUser(user: User): User {
       const users = this.getUsers();
+      const sanitizedUser = { ...user, password: undefined };
       const existingIdx = users.findIndex(u => u.id === user.id || (u.employeeId && u.employeeId.toUpperCase() === user.employeeId?.toUpperCase()));
       if (existingIdx > -1) {
-        users[existingIdx] = user;
+        users[existingIdx] = sanitizedUser;
       } else {
-        users.push(user);
+        users.push(sanitizedUser);
       }
       this.saveUsers(users);
       try {
@@ -267,14 +269,15 @@
         const filtered = deleted.filter((id: string) => id !== user.id);
         localStorage.setItem('shanta_deleted_user_ids', JSON.stringify(filtered));
       } catch (e) {}
-      return user;
+      return sanitizedUser;
     },
 
     updateUser(id: string, data: Partial<User>): User | null {
       const users = this.getUsers();
       const idx = users.findIndex(u => u.id === id);
       if (idx === -1) return null;
-      users[idx] = { ...users[idx], ...data };
+      const nextUser = { ...users[idx], ...data, password: undefined };
+      users[idx] = nextUser;
       this.saveUsers(users);
       return users[idx];
     },

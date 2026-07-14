@@ -168,10 +168,8 @@ export default function AllLeads() {
     }
 
     try {
-      const dbUser = await userService.getUser(user?.id || '');
-      const actualPassword = dbUser?.password || user?.password || 'shanta123';
-
-      if (deleteConfirmPassword !== actualPassword) {
+      const isPasswordValid = await userService.validateCurrentPassword(deleteConfirmPassword);
+      if (!isPasswordValid) {
         toast.error('Deletion aborted: Incorrect password provided');
         return;
       }

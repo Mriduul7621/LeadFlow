@@ -1,10 +1,10 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import { getPool } from './db.ts';
 
-type AuthenticatedRequest = Request & {
+export type AuthenticatedRequest = Request & {
   user?: {
     id: string;
     employeeId: string;
@@ -48,7 +48,7 @@ interface SessionRecord {
 const sessions = new Map<string, SessionRecord>();
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 8);
 const REMEMBER_ME_TTL_MS = Number(process.env.REMEMBER_ME_TTL_MS || 1000 * 60 * 60 * 24 * 30);
-const JWT_SECRET = process.env.JWT_SECRET || 'leadflow-dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'leadflow-dev-secret-change-me');
 
 function sanitizeValue(value: string) {
   return value.replace(/[<>]/g, '').trim();
@@ -64,6 +64,7 @@ function base64UrlEncode(value: string | Buffer) {
 }
 
 function createJwt(payload: Record<string, unknown>, expiresInMs: number) {
+  if (!JWT_SECRET) throw new Error('JWT_SECRET must be configured in production.');
   const header = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const body = base64UrlEncode(JSON.stringify({ ...payload, iat: Math.floor(Date.now() / 1000), exp: Math.floor((Date.now() + expiresInMs) / 1000) }));
   const signature = base64UrlEncode(createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest());
@@ -71,11 +72,14 @@ function createJwt(payload: Record<string, unknown>, expiresInMs: number) {
 }
 
 function verifyJwt(token: string) {
+  if (!JWT_SECRET) return null;
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [header, payload, signature] = parts;
   const expectedSignature = base64UrlEncode(createHmac('sha256', JWT_SECRET).update(`${header}.${payload}`).digest());
-  if (expectedSignature !== signature) return null;
+  const expected = Buffer.from(expectedSignature);
+  const received = Buffer.from(signature);
+  if (expected.length !== received.length || !timingSafeEqual(expected, received)) return null;
 
   try {
     const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>;
@@ -110,7 +114,17 @@ function isBcryptHash(value: string) {
 }
 
 export async function hashPassword(password: string) {
+  if (!password) return '';
+  if (isBcryptHash(password)) return password;
   return bcrypt.hash(password, 12);
+}
+
+export async function normalizePasswordForStorage(password?: string | null, existingHash?: string | null) {
+  if (password === undefined || password === null) return existingHash || null;
+  const trimmed = String(password).trim();
+  if (!trimmed) return existingHash || null;
+  if (isBcryptHash(trimmed)) return trimmed;
+  return bcrypt.hash(trimmed, 12);
 }
 
 export async function verifyPassword(password: string, hash: string) {
@@ -121,7 +135,22 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export function authenticateRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export function toSafeUser(row: Record<string, any>) {
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    designation: row.designation,
+    status: row.status,
+    createdDate: row.created_date,
+    teamId: row.team_id || '',
+    mustChangePassword: !!row.must_change_password,
+  };
+}
+
+export async function authenticateRequest(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const path = req.path;
   const isPublicPath = path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/db-status' || path === '/api/users/check-admin';
 
@@ -150,8 +179,32 @@ export function authenticateRequest(req: AuthenticatedRequest, res: Response, ne
     return res.status(401).json({ error: 'Session expired.' });
   }
 
-  req.user = { id: String(jwtPayload.sub || session.userId), employeeId: String(jwtPayload.employeeId || session.employeeId), role: String(jwtPayload.role || session.role) };
-  next();
+  const pool = getPool();
+  if (!pool) {
+    return res.status(503).json({ error: 'Database connection unavailable.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, employee_id, role, status, must_change_password FROM users WHERE id = $1 LIMIT 1',
+      [String(jwtPayload.sub || session.userId)]
+    );
+    const user = result.rows[0];
+    if (!user || String(user.status || '').toLowerCase() !== 'active') {
+      destroySession(token);
+      return res.status(401).json({ error: 'Account is unavailable.' });
+    }
+
+    req.user = { id: user.id, employeeId: user.employee_id, role: user.role || 'RO' };
+    const passwordChangePath = path === '/api/auth/verify-password' || path === '/api/auth/logout' || path === '/api/auth/me';
+    if (user.must_change_password && !passwordChangePath) {
+      return res.status(403).json({ error: 'Password change is required before continuing.', code: 'PASSWORD_CHANGE_REQUIRED' });
+    }
+    next();
+  } catch (error) {
+    console.error('Authentication lookup failed:', error);
+    return res.status(503).json({ error: 'Authentication service unavailable.' });
+  }
 }
 
 export function requireRole(allowedRoles: string | string[]) {
@@ -195,6 +248,9 @@ export function registerAuthRoutes(app: Express) {
       }
 
       const row = result.rows[0];
+      if (String(row.status || '').toLowerCase() !== 'active') {
+        return res.status(403).json({ error: 'This account is inactive.' });
+      }
       const storedHash = row.password || '';
       let passwordMatches = await verifyPassword(cleanPassword, storedHash);
 
@@ -207,8 +263,10 @@ export function registerAuthRoutes(app: Express) {
       }
 
       if (!isBcryptHash(storedHash) && storedHash === cleanPassword) {
-        const migratedHash = await hashPassword(cleanPassword);
-        await pool.query('UPDATE users SET password = $1 WHERE id = $2', [migratedHash, row.id]);
+        const migratedHash = await normalizePasswordForStorage(cleanPassword, storedHash);
+        if (migratedHash && migratedHash !== storedHash) {
+          await pool.query('UPDATE users SET password = $1 WHERE id = $2', [migratedHash, row.id]);
+        }
       }
 
       const ttl = rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
@@ -239,7 +297,7 @@ export function registerAuthRoutes(app: Express) {
       res.json({ success: true, token, user: safeUser });
     } catch (error: any) {
       console.error('Auth login failed:', error);
-      res.status(500).json({ error: 'Login failed.', details: error.message });
+      res.status(500).json({ error: 'Login failed.' });
     }
   });
 
@@ -256,7 +314,14 @@ export function registerAuthRoutes(app: Express) {
         return res.status(503).json({ error: 'Database connection unavailable.' });
       }
 
-      const hashedPassword = await hashPassword(payload.password);
+      // Registration exists solely for the initial administrator bootstrap. All
+      // subsequent user creation is performed through the protected admin route.
+      const existingUsers = await pool.query('SELECT 1 FROM users LIMIT 1');
+      if (existingUsers.rowCount) {
+        return res.status(403).json({ error: 'Initial administrator is already configured.' });
+      }
+
+      const hashedPassword = await normalizePasswordForStorage(payload.password);
       const query = `
         INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password, must_change_password)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -271,13 +336,13 @@ export function registerAuthRoutes(app: Express) {
           must_change_password = EXCLUDED.must_change_password
         RETURNING *
       `;
-      const values = [payload.id || `u_${Date.now()}`, sanitizeValue(payload.name), sanitizeValue(payload.employeeId).toUpperCase(), payload.email.toLowerCase(), payload.role.toUpperCase(), payload.designation, payload.status, payload.createdDate, hashedPassword, payload.mustChangePassword];
+      const values = [payload.id || `u_${Date.now()}`, sanitizeValue(payload.name), sanitizeValue(payload.employeeId).toUpperCase(), payload.email.toLowerCase(), 'ADMIN', 'Administrator', 'Active', payload.createdDate, hashedPassword, false];
       const result = await pool.query(query, values);
       const row = result.rows[0];
-      res.status(201).json({ success: true, user: { id: row.id, employeeId: row.employee_id, name: row.name, email: row.email, role: row.role, designation: row.designation, status: row.status, createdDate: row.created_date, mustChangePassword: !!row.must_change_password } });
+      res.status(201).json({ success: true, user: toSafeUser(row) });
     } catch (error: any) {
       console.error('Auth registration failed:', error);
-      res.status(500).json({ error: 'User creation failed.', details: error.message });
+      res.status(500).json({ error: 'User creation failed.' });
     }
   });
 
@@ -330,7 +395,7 @@ export function registerAuthRoutes(app: Express) {
       res.json({ success: true, valid: isValid });
     } catch (error: any) {
       console.error('Password validation failed:', error);
-      res.status(500).json({ error: 'Password validation failed.', details: error.message });
+      res.status(500).json({ error: 'Password validation failed.' });
     }
   });
 
@@ -368,7 +433,7 @@ export function registerAuthRoutes(app: Express) {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Password change failed:', error);
-      res.status(500).json({ error: 'Password update failed.', details: error.message });
+      res.status(500).json({ error: 'Password update failed.' });
     }
   });
 }

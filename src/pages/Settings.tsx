@@ -109,8 +109,8 @@ export default function Settings() {
     try {
       await userService.changePassword(currentPassword, newPassword);
 
-      const updatedUser = { ...user, password: newPassword, mustChangePassword: false };
-      await userService.updateUser(user.id, updatedUser);
+      const updatedUser = { ...user, mustChangePassword: false };
+      await userService.updateUser(user.id, { password: newPassword, mustChangePassword: false } as any);
       login(updatedUser, isOfflineMode);
 
       toast.success('Security password updated successfully');

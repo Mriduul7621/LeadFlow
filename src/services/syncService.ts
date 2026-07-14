@@ -47,11 +47,15 @@ export const syncService = {
       let finalUsersToKeep = [...localUsers];
 
       try {
+        const sanitizedLocalUsers = localUsers
+          .filter(u => !deletedUserIds.has(u.id))
+          .map(({ password, ...rest }) => rest);
+
         const userSyncRes = await fetch('/api/users/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            localUsers: localUsers.filter(u => !deletedUserIds.has(u.id)),
+            localUsers: sanitizedLocalUsers,
             deletedUserIds: Array.from(deletedUserIds)
           })
         });

@@ -1,39 +1,49 @@
 import { User } from '../types';
 import { localDb } from './localDb';
 
+function sanitizeUserForTransport(user: Partial<User> | undefined) {
+  if (!user) return {};
+  const payload = { ...user } as Partial<User> & Record<string, unknown>;
+  if (payload.password === undefined) {
+    delete payload.password;
+  }
+  return payload;
+}
+
 export const userService = {
   async createUser(user: User) {
-    // Always write to localDb first for immediate local consistency
-    localDb.createUser(user);
+    const safeUser = sanitizeUserForTransport(user) as User;
+    delete safeUser.password;
+    localDb.createUser(safeUser);
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user)
+        body: JSON.stringify(sanitizeUserForTransport(user))
       });
       if (res.ok) {
         const saved = await res.json();
-        return saved as User;
+        return (saved.user || saved) as User;
       }
     } catch (error) {
       console.warn('PostgreSQL write fallback to local db:', error);
     }
-    return user;
+    return safeUser;
   },
 
   async updateUser(userId: string, data: Partial<User>) {
-    // Always write to localDb first for immediate local consistency
-    localDb.updateUser(userId, data);
+    const safeData = sanitizeUserForTransport(data) as Partial<User>;
+    localDb.updateUser(userId, safeData);
 
     const existing = localDb.getUser(userId);
     if (!existing) return true;
 
     try {
-      await fetch('/api/auth/register', {
+      await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(existing)
+        body: JSON.stringify({ ...existing, ...safeData, id: userId })
       });
     } catch (error) {
       console.warn('PostgreSQL write fallback to local db:', error);
@@ -71,6 +81,19 @@ export const userService = {
     return res.json();
   },
 
+  async registerInitialAdmin(user: User) {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user)
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Initial administrator setup failed.');
+    }
+    return res.json();
+  },
+
   async logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
   },
@@ -94,7 +117,6 @@ export const userService = {
             const lTime = new Date(localUser.createdDate || 0).getTime();
             const cTime = new Date(cu.createdDate || 0).getTime();
             const needsUpdate = cu.role !== localUser.role || 
-                                cu.password !== localUser.password || 
                                 cu.name !== localUser.name ||
                                 cu.status !== localUser.status ||
                                 (!isNaN(cTime) && !isNaN(lTime) && cTime > lTime);
@@ -150,6 +172,17 @@ export const userService = {
       throw new Error(body.error || 'Password change failed.');
     }
     return res.json();
+  },
+
+  async validateCurrentPassword(password: string): Promise<boolean> {
+    const res = await fetch('/api/auth/validate-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    if (!res.ok) return false;
+    const body = await res.json();
+    return body.valid === true;
   },
 
   async checkAdminExists(): Promise<boolean> {

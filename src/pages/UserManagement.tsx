@@ -482,6 +482,10 @@ export default function UserManagement() {
       toast.error('Please complete Name, Employee ID and Email address.');
       return;
     }
+    if (!editingUser && userForm.password.trim().length < 6) {
+      toast.error('Set a temporary password of at least 6 characters for a new employee.');
+      return;
+    }
 
     const cleanEmpId = userForm.employeeId.trim().toUpperCase();
 
@@ -510,9 +514,7 @@ export default function UserManagement() {
         departmentId: userForm.departmentId as any,
         status: userForm.status,
         createdDate: editingUser ? editingUser.createdDate : new Date().toISOString(),
-        // Save provided password, fallback to original if editing and blank, or default 'shanta123'
-        password: userForm.password ? userForm.password : (editingUser ? editingUser.password : 'shanta123'),
-        // Set mustChangePassword true for new users or if password is explicitly edited
+        password: userForm.password ? userForm.password : undefined,
         mustChangePassword: editingUser 
           ? (userForm.password ? true : (editingUser.mustChangePassword ?? false))
           : true,
@@ -525,9 +527,11 @@ export default function UserManagement() {
         toast.success(`Employee profile for ${payload.name} updated.`);
       } else {
         await userService.createUser(payload);
-        toast.success(`Success: ${payload.name} registered with Temporary Password: "${payload.password}".`);
+        const tempPassword = userForm.password?.trim();
+        toast.success(tempPassword ? `Success: ${payload.name} registered with temporary password.` : `Success: ${payload.name} registered.`);
       }
 
+      setUserForm(prev => ({ ...prev, password: '' }));
       setIsUserModalOpen(false);
       await loadAllOperationalData();
     } catch (err) {
@@ -1381,7 +1385,7 @@ export default function UserManagement() {
                 <div className="flex flex-1 items-center gap-3 w-full max-w-lg bg-white border border-slate-200 px-3 py-2">
                   <Search className="w-4 h-4 text-slate-400" />
                   <input
-                    type="text"
+                    type="password"
                     value={userQuery}
                     onChange={(e) => setUserQuery(e.target.value)}
                     placeholder="Search by Employee ID, Name, Job title..."
@@ -1784,7 +1788,7 @@ export default function UserManagement() {
                     type="text"
                     value={userForm.password}
                     onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                    placeholder={editingUser ? "LEAVE BLANK TO RETAIN CURRENT SECURITY PASSWORD" : "DEFAULT: shanta123 (RECOMMENDED ROTATION ON LOGIN)"}
+                    placeholder={editingUser ? "LEAVE BLANK TO RETAIN CURRENT SECURITY PASSWORD" : "SET A TEMPORARY PASSWORD"}
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-200 focus:border-[#978C21] outline-none text-xs rounded-none transition-all uppercase tracking-widest font-mono"
                   />
                   <p className="text-[9px] text-slate-400 leading-normal tracking-wide italic">

@@ -6,7 +6,6 @@ let pool: pg.Pool | null = null;
 export function getPool(): pg.Pool | null {
   if (!pool) {
     const rawConnectionString = process.env.DATABASE_URL;
-    console.log(process.env.DATABASE_URL);
     if (!rawConnectionString) {
       console.warn("⚠️ DATABASE_URL environment variable is not defined. Supabase PostgreSQL is not connected. Fallback to in-memory/local mock mode.");
       return null;
@@ -56,6 +55,10 @@ export async function initializeDatabase() {
           password VARCHAR(255)
         )
       `);
+      // Existing deployments may have been created before these fields were
+      // introduced; CREATE TABLE IF NOT EXISTS does not migrate them.
+      await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS team_id VARCHAR(255)');
+      await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE');
       console.log("✅ Users table verification complete.");
 
       // Create Leads table

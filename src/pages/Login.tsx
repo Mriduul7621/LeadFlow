@@ -13,41 +13,6 @@ import { syncService } from '../services/syncService';
 import { User, UserRole } from '../types';
 import { useTranslation } from '../utils/translations';
 
-function detectRoleFromEmployeeId(empId: string): UserRole {
-  const norm = empId.trim().toUpperCase();
-  if (norm === 'ADMIN' || norm.startsWith('ADM')) return UserRole.ADMIN;
-  if (norm.startsWith('RO')) return UserRole.RO;
-  if (norm.startsWith('RM')) return UserRole.RM;
-  if (norm.startsWith('ASM')) return UserRole.ASM;
-  if (norm.startsWith('BDM')) return UserRole.BDM;
-  if (norm.startsWith('BE')) return UserRole.BUSINESS_EXECUTIVE;
-  if (norm.startsWith('BH')) return UserRole.BUSINESS_HEAD;
-
-  // Contains search fallback
-  if (norm.includes('ADMIN')) return UserRole.ADMIN;
-  if (norm.includes('BH') || norm.includes('BUSINESSHEAD')) return UserRole.BUSINESS_HEAD;
-  if (norm.includes('BE') || norm.includes('BUSINESSEXECUTIVE') || norm.includes('EXEC')) return UserRole.BUSINESS_EXECUTIVE;
-  if (norm.includes('BDM') || norm.includes('DEVELOPMENT')) return UserRole.BDM;
-  if (norm.includes('ASM')) return UserRole.ASM;
-  if (norm.includes('RM') || norm.includes('MANAGER')) return UserRole.RM;
-  if (norm.includes('RO') || norm.includes('OFFICER')) return UserRole.RO;
-
-  return UserRole.RO; // default dynamic fallback
-}
-
-function getDesignationFromRole(role: UserRole): string {
-  switch (role) {
-    case UserRole.ADMIN: return 'Administrator';
-    case UserRole.RO: return 'Relationship Officer';
-    case UserRole.RM: return 'Relationship Manager';
-    case UserRole.ASM: return 'Area Sales Manager';
-    case UserRole.BDM: return 'Business Development Manager';
-    case UserRole.BUSINESS_EXECUTIVE: return 'Business Executive';
-    case UserRole.BUSINESS_HEAD: return 'Business Head';
-    default: return 'Office Employee';
-  }
-}
-
 // @ts-ignore
 import bgImage from '../assets/images/income_planner_bg_1779253838380.png';
 
@@ -117,18 +82,12 @@ export default function Login() {
         mustChangePassword: false,
       };
 
-      // 1. Create in local state database first
-      localDb.createUser(newUser);
-
-      // 2. Synchronize to PostgreSQL Cloud
-      try {
-        await userService.createUser(newUser);
-      } catch (fErr) {
-        console.warn("Could not sync first-time admin to cloud:", fErr);
-      }
-
-      // 3. Authenticate and log in
-      login(newUser, false);
+      await userService.registerInitialAdmin(newUser);
+      const authResponse = await userService.login(empId, data.password, false);
+      const secureUser = authResponse.user as User;
+      login(secureUser, false, authResponse.token);
+      localDb.createUser(secureUser);
+      setIsFirstTimeSetup(false);
       toast.success("Super Admin console initialized successfully!");
       syncService.syncToDatabase();
       navigate('/');
@@ -143,134 +102,19 @@ export default function Login() {
       const empId = data.username.toUpperCase().trim();
       const enteredPassword = data.password;
 
-      try {
-        const authResponse = await userService.login(empId, enteredPassword, false);
-        if (authResponse?.success && authResponse.user) {
-          const secureUser = { ...authResponse.user, password: enteredPassword } as User;
-          login(secureUser, false, authResponse.token);
-          localDb.createUser(secureUser);
-          toast.success(t('welcomeMessage', { name: secureUser.name }));
-          navigate('/');
-          return;
-        }
-      } catch (authErr: any) {
-        console.warn('Secure login failed, falling back to local credentials.', authErr);
+      const authResponse = await userService.login(empId, enteredPassword, false);
+      if (!authResponse?.success || !authResponse.user || !authResponse.token) {
+        throw new Error('Authentication failed.');
       }
 
-      // Master Admin Bypass Control
-      if (empId === 'ADMIN' && enteredPassword === 'shanta123') {
-        const masterAdmin = {
-          id: 'u1',
-          name: 'Shantalife Admin',
-          employeeId: 'ADMIN',
-          email: 'admin@shantalife.com',
-          role: 'ADMIN' as any,
-          status: 'Active' as any,
-          createdDate: new Date().toISOString(),
-          password: 'shanta123'
-        };
-
-        // Re-write or Seed local DB
-        const localUsers = localDb.getUsers();
-        const existingAdminIdx = localUsers.findIndex(u => u.employeeId === 'ADMIN' || u.id === 'u1');
-        if (existingAdminIdx > -1) {
-          localUsers[existingAdminIdx] = masterAdmin;
-          localDb.saveUsers(localUsers);
-        } else {
-          localDb.createUser(masterAdmin);
-        }
-
-        // Parallel re-write or seed to PostgreSQL Cloud
-        try {
-          await userService.createUser(masterAdmin);
-        } catch (fErr) {
-          console.warn("Could not seed online Admin in cloud:", fErr);
-        }
-
-        login(masterAdmin, false, null);
-        toast.success(t('masterAdminProtocol'));
-        syncService.syncToDatabase();
-        navigate('/');
-        return;
-      }
-
-      let matchedUser = null;
-
-      // 1. First, search for user in Cloud Database with robust case-insensitive comparison
-      try {
-        const firestoreUsers = await userService.getAllUsers();
-        if (firestoreUsers && firestoreUsers.length > 0) {
-          matchedUser = firestoreUsers.find(u => {
-            const uEmpId = (u.employeeId || '').toUpperCase().trim();
-            const uId = (u.id || '').toLowerCase().trim();
-            const scanId = empId.toLowerCase();
-            return uEmpId === empId || uId === scanId || uId === `u_local_${scanId}`;
-          });
-        }
-      } catch (err) {
-        console.warn('Cloud Database user fetch failed or offline; trying local storage lookup:', err);
-      }
-
-      // 2. Fall back to localDb search if Cloud Database fails or doesn't have the user yet
-      if (!matchedUser) {
-        const localUsers = localDb.getUsers();
-        matchedUser = localUsers.find(u => {
-          const uEmpId = (u.employeeId || '').toUpperCase().trim();
-          const uId = (u.id || '').toLowerCase().trim();
-          const scanId = empId.toLowerCase();
-          return uEmpId === empId || uId === scanId || uId === `u_local_${scanId}`;
-        });
-      }
-
-      if (matchedUser) {
-        let requiredPassword = matchedUser.password || 'shanta123';
-        // Match passwords
-        if (requiredPassword !== enteredPassword) {
-          // Robust Fallback: Check if local storage records are matching and correct
-          const localUsers = localDb.getUsers();
-          const localMatchedUser = localUsers.find(u => {
-            const uEmpId = (u.employeeId || '').toUpperCase().trim();
-            const uId = (u.id || '').toLowerCase().trim();
-            const scanId = empId.toLowerCase();
-            return uEmpId === empId || uId === scanId || uId === `u_local_${scanId}`;
-          });
-          if (localMatchedUser && (localMatchedUser.password || 'shanta123') === enteredPassword) {
-            // Local record is authentic! Let's match the passwords
-            matchedUser.password = enteredPassword;
-            // Align the cloud database on-the-fly to correct any out-of-sync credential
-            try {
-              await userService.updateUser(matchedUser.id, { password: enteredPassword });
-            } catch (err) {
-              console.warn("Could not align cloud database password with local authentic credentials:", err);
-            }
-          } else {
-            toast.error('Authentication failed: Invalid credentials or password.');
-            return;
-          }
-        }
-        
-        // Ensure matchedUser is stored/updated in local storage
-        const localUsers = localDb.getUsers();
-        const existsLocally = localUsers.some(u => u.id === matchedUser.id);
-        if (!existsLocally) {
-          localDb.createUser(matchedUser);
-        } else {
-          localDb.updateUser(matchedUser.id, matchedUser);
-        }
-
-        // Log in to online session
-        login(matchedUser, false, null);
-        toast.success(t('welcomeMessage', { name: matchedUser.name }));
-        
-        // Push any local storage offline data into PostgreSQL Cloud Database synchronously
-        syncService.syncToDatabase();
-        navigate('/');
-      } else {
-        toast.error('Authentication failed: Employee ID does not exist in the system. Please ask an Administrator to authorize your account.');
-      }
+      const secureUser = authResponse.user as User;
+      login(secureUser, false, authResponse.token);
+      localDb.createUser(secureUser);
+      toast.success(t('welcomeMessage', { name: secureUser.name }));
+      navigate('/');
     } catch (err: any) {
       console.error('Authentication process failed:', err);
-      toast.error('Local Authentication initiation failed.');
+      toast.error(err?.message || 'Authentication failed.');
     }
   };
 

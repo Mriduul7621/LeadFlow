@@ -2,8 +2,8 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { getPool, initializeDatabase } from './server/db.ts';
-import { hashPassword, registerAuthRoutes, authenticateRequest, requireRole } from './server/auth.ts';
-import { securityHeaders, apiLimiter, sanitizeInput, validateRequest, errorHandler } from './server/middleware.ts';
+import { normalizePasswordForStorage, registerAuthRoutes, authenticateRequest, requireRole, toSafeUser, type AuthenticatedRequest } from './server/auth.ts';
+import { securityHeaders, apiLimiter, authLimiter, sanitizeInput, validateRequest, errorHandler } from './server/middleware.ts';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
@@ -15,6 +15,7 @@ const PORT = 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(securityHeaders);
+app.use('/api/auth/login', authLimiter);
 app.use(apiLimiter);
 app.use(sanitizeInput);
 app.use(validateRequest);
@@ -70,18 +71,7 @@ app.use(async (req, res, next) => {
     if (!pool) return res.json([]);
     try {
       const result = await pool.query('SELECT * FROM users');
-      const formatted = result.rows.map(row => ({
-        id: row.id,
-        name: row.name,
-        employeeId: row.employee_id,
-        email: row.email,
-        role: row.role,
-        designation: row.designation,
-        status: row.status,
-        createdDate: row.created_date,
-        password: row.password,
-        teamId: row.team_id || ''
-      }));
+      const formatted = result.rows.map(toSafeUser);
       res.json(formatted);
     } catch (err: any) {
       console.error('Error fetching users:', err);
@@ -94,11 +84,13 @@ app.use(async (req, res, next) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
-      const { id, name, employeeId, email, role, designation, status, createdDate, password } = req.body;
-      const hashedPassword = password ? await hashPassword(password) : password;
+      const { id, name, employeeId, email, role, designation, status, createdDate, password, teamId, mustChangePassword } = req.body;
+      const existingUser = id ? await pool.query('SELECT password FROM users WHERE id = $1 LIMIT 1', [id]) : null;
+      const existingPasswordHash = existingUser?.rows?.[0]?.password || null;
+      const hashedPassword = await normalizePasswordForStorage(password, existingPasswordHash);
       const query = `
-        INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password, team_id, must_change_password)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           employee_id = EXCLUDED.employee_id,
@@ -107,12 +99,15 @@ app.use(async (req, res, next) => {
           designation = EXCLUDED.designation,
           status = EXCLUDED.status,
           created_date = EXCLUDED.created_date,
-          password = EXCLUDED.password
+          password = EXCLUDED.password,
+          team_id = EXCLUDED.team_id,
+          must_change_password = EXCLUDED.must_change_password
         RETURNING *
       `;
-      const values = [id, name, employeeId, email, role, designation, status, createdDate, hashedPassword];
-      await pool.query(query, values);
-      res.status(200).json(req.body);
+      const values = [id || `u_${Date.now()}`, name, employeeId, email, role, designation, status, createdDate, hashedPassword, teamId || '', mustChangePassword ?? false];
+      const result = await pool.query(query, values);
+      const row = result.rows[0];
+      res.status(200).json({ success: true, user: toSafeUser(row) });
     } catch (err: any) {
       console.error('Error upserting user:', err);
       res.status(500).json({ error: 'Upsert failed', details: err.message });
@@ -133,11 +128,13 @@ app.use(async (req, res, next) => {
 
       if (Array.isArray(localUsers)) {
         for (const user of localUsers) {
-          const { id, name, employeeId, email, role, designation, status, createdDate, password } = user;
-          const hashedPassword = password ? await hashPassword(password) : password;
+          const { id, name, employeeId, email, role, designation, status, createdDate, password, teamId, mustChangePassword } = user;
+          const existingUserResult = id ? await pool.query('SELECT password FROM users WHERE id = $1 LIMIT 1', [id]) : null;
+          const existingPasswordHash = existingUserResult?.rows?.[0]?.password || null;
+          const hashedPassword = await normalizePasswordForStorage(password, existingPasswordHash);
           const query = `
-            INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO users (id, name, employee_id, email, role, designation, status, created_date, password, team_id, must_change_password)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             ON CONFLICT (id) DO UPDATE SET
               name = EXCLUDED.name,
               employee_id = EXCLUDED.employee_id,
@@ -146,26 +143,17 @@ app.use(async (req, res, next) => {
               designation = EXCLUDED.designation,
               status = EXCLUDED.status,
               created_date = EXCLUDED.created_date,
-              password = EXCLUDED.password
+              password = EXCLUDED.password,
+              team_id = EXCLUDED.team_id,
+              must_change_password = EXCLUDED.must_change_password
           `;
-          await pool.query(query, [id, name, employeeId, email, role, designation, status, createdDate, hashedPassword]);
+          await pool.query(query, [id, name, employeeId, email, role, designation, status, createdDate, hashedPassword, teamId || '', mustChangePassword ?? false]);
           syncCount++;
         }
       }
 
       const latestUsers = await pool.query('SELECT * FROM users');
-      const formatted = latestUsers.rows.map(row => ({
-        id: row.id,
-        name: row.name,
-        employeeId: row.employee_id,
-        email: row.email,
-        role: row.role,
-        designation: row.designation,
-        status: row.status,
-        createdDate: row.created_date,
-        password: row.password,
-        teamId: row.team_id || ''
-      }));
+      const formatted = latestUsers.rows.map(toSafeUser);
       res.json({ success: true, processed: syncCount, cloudUsers: formatted });
     } catch (err: any) {
       console.error('Users sync failed:', err);
@@ -190,11 +178,14 @@ app.use(async (req, res, next) => {
 
   // --- LEADS CRUD ---
   // Get all leads
-  app.get('/api/leads', async (req, res) => {
+  app.get('/api/leads', async (req: AuthenticatedRequest, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
-      const result = await pool.query('SELECT * FROM leads ORDER BY timestamp DESC');
+      const isAdmin = req.user?.role?.toUpperCase() === 'ADMIN';
+      const result = isAdmin
+        ? await pool.query('SELECT * FROM leads ORDER BY timestamp DESC')
+        : await pool.query('SELECT * FROM leads WHERE assigned_to = $1 ORDER BY timestamp DESC', [req.user?.employeeId]);
       const formatted = result.rows.map(row => {
         let history = [];
         try {
@@ -236,11 +227,25 @@ app.use(async (req, res, next) => {
   });
 
   // Create / Update lead (Upsert)
-  app.post('/api/leads', async (req, res) => {
+  app.post('/api/leads', async (req: AuthenticatedRequest, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
       const lead = req.body;
+      const isAdmin = req.user?.role?.toUpperCase() === 'ADMIN';
+      const existing = await pool.query('SELECT assigned_to, creation_date FROM leads WHERE id = $1 LIMIT 1', [lead.id]);
+      if (!isAdmin) {
+        if (existing.rows.length && existing.rows[0].assigned_to !== req.user?.employeeId) {
+          return res.status(403).json({ error: 'You can only update leads assigned to you.' });
+        }
+        if (!existing.rows.length && lead.assignedTo !== req.user?.employeeId) {
+          return res.status(403).json({ error: 'You can only create leads assigned to you.' });
+        }
+        if (existing.rows.length) {
+          lead.assignedTo = existing.rows[0].assigned_to;
+          lead.creationDate = existing.rows[0].creation_date;
+        }
+      }
       const statusHistoryJson = JSON.stringify(lead.statusHistory || []);
       const query = `
         INSERT INTO leads (
@@ -294,7 +299,7 @@ app.use(async (req, res, next) => {
   });
 
   // Bidirectional Leads sync
-  app.post('/api/leads/sync', async (req, res) => {
+  app.post('/api/leads/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -398,7 +403,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete lead
-  app.delete('/api/leads/:id', async (req, res) => {
+  app.delete('/api/leads/:id', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -411,7 +416,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete campaign leads
-  app.delete('/api/leads/campaign/:campaignName', async (req, res) => {
+  app.delete('/api/leads/campaign/:campaignName', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, count: 0 });
     try {
@@ -424,7 +429,7 @@ app.use(async (req, res, next) => {
   });
 
   // Clear all leads
-  app.post('/api/leads/clear-all', async (req, res) => {
+  app.post('/api/leads/clear-all', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -452,7 +457,7 @@ app.use(async (req, res, next) => {
   });
 
   // Add / Update option
-  app.post('/api/options', async (req, res) => {
+  app.post('/api/options', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -476,7 +481,7 @@ app.use(async (req, res, next) => {
   });
 
   // Options sync
-  app.post('/api/options/sync', async (req, res) => {
+  app.post('/api/options/sync', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -512,7 +517,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete option
-  app.delete('/api/options/:type/:value', async (req, res) => {
+  app.delete('/api/options/:type/:value', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -988,7 +993,10 @@ app.use(async (req, res, next) => {
 
   // --- NOTIFICATIONS CRUD ---
   // Get all notifications for a specific user
-  app.get('/api/notifications/users/:userId', async (req, res) => {
+  app.get('/api/notifications/users/:userId', async (req: AuthenticatedRequest, res) => {
+    if (req.user?.role?.toUpperCase() !== 'ADMIN' && req.user?.employeeId !== req.params.userId) {
+      return res.status(403).json({ error: 'You can only view your own notifications.' });
+    }
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -1013,7 +1021,7 @@ app.use(async (req, res, next) => {
   });
 
   // Create notifications
-  app.post('/api/notifications', async (req, res) => {
+  app.post('/api/notifications', requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -1038,11 +1046,15 @@ app.use(async (req, res, next) => {
   });
 
   // Mark specific notification as read
-  app.post('/api/notifications/:id/read', async (req, res) => {
+  app.post('/api/notifications/:id/read', async (req: AuthenticatedRequest, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
-      await pool.query('UPDATE notifications SET read = TRUE WHERE id = $1', [req.params.id]);
+      const isAdmin = req.user?.role?.toUpperCase() === 'ADMIN';
+      const result = isAdmin
+        ? await pool.query('UPDATE notifications SET read = TRUE WHERE id = $1', [req.params.id])
+        : await pool.query('UPDATE notifications SET read = TRUE WHERE id = $1 AND user_id = $2', [req.params.id, req.user?.employeeId]);
+      if (!isAdmin && !result.rowCount) return res.status(404).json({ error: 'Notification not found.' });
       res.json({ success: true });
     } catch (err) {
       console.error('Error marking notification as read:', err);
@@ -1051,7 +1063,10 @@ app.use(async (req, res, next) => {
   });
 
   // Mark all notifications for user as read
-  app.post('/api/notifications/users/:userId/read-all', async (req, res) => {
+  app.post('/api/notifications/users/:userId/read-all', async (req: AuthenticatedRequest, res) => {
+    if (req.user?.role?.toUpperCase() !== 'ADMIN' && req.user?.employeeId !== req.params.userId) {
+      return res.status(403).json({ error: 'You can only update your own notifications.' });
+    }
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -1064,7 +1079,10 @@ app.use(async (req, res, next) => {
   });
 
   // Delete all notifications for user
-  app.delete('/api/notifications/users/:userId', async (req, res) => {
+  app.delete('/api/notifications/users/:userId', async (req: AuthenticatedRequest, res) => {
+    if (req.user?.role?.toUpperCase() !== 'ADMIN' && req.user?.employeeId !== req.params.userId) {
+      return res.status(403).json({ error: 'You can only delete your own notifications.' });
+    }
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
