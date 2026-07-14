@@ -19,7 +19,6 @@ app.use('/api/auth/login', authLimiter);
 app.use(apiLimiter);
 app.use(sanitizeInput);
 app.use(validateRequest);
-app.use(authenticateRequest);
 
 // Lazy Database Initializer Middleware for Serverless Compatibility
 let dbInitialized = false;
@@ -66,7 +65,7 @@ app.use(async (req, res, next) => {
   });
 
   // Get all users
-  app.get('/api/users', requireRole('ADMIN'), async (req, res) => {
+  app.get('/api/users', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -80,7 +79,7 @@ app.use(async (req, res, next) => {
   });
 
   // Create or update user
-  app.post('/api/users', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/users', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -115,7 +114,7 @@ app.use(async (req, res, next) => {
   });
 
   // Sync users list
-  app.post('/api/users/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/users/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -162,7 +161,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete user
-  app.delete('/api/users/:id', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/users/:id', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -178,7 +177,7 @@ app.use(async (req, res, next) => {
 
   // --- LEADS CRUD ---
   // Get all leads
-  app.get('/api/leads', async (req: AuthenticatedRequest, res) => {
+  app.get('/api/leads', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -227,7 +226,7 @@ app.use(async (req, res, next) => {
   });
 
   // Create / Update lead (Upsert)
-  app.post('/api/leads', async (req: AuthenticatedRequest, res) => {
+  app.post('/api/leads', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -299,7 +298,7 @@ app.use(async (req, res, next) => {
   });
 
   // Bidirectional Leads sync
-  app.post('/api/leads/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/leads/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -403,7 +402,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete lead
-  app.delete('/api/leads/:id', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/leads/:id', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -416,7 +415,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete campaign leads
-  app.delete('/api/leads/campaign/:campaignName', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/leads/campaign/:campaignName', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, count: 0 });
     try {
@@ -429,7 +428,7 @@ app.use(async (req, res, next) => {
   });
 
   // Clear all leads
-  app.post('/api/leads/clear-all', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/leads/clear-all', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -444,7 +443,7 @@ app.use(async (req, res, next) => {
 
   // --- OPTIONS CRUD ---
   // Get all options
-  app.get('/api/options', async (req, res) => {
+  app.get('/api/options', authenticateRequest, async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -457,7 +456,7 @@ app.use(async (req, res, next) => {
   });
 
   // Add / Update option
-  app.post('/api/options', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/options', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -481,7 +480,7 @@ app.use(async (req, res, next) => {
   });
 
   // Options sync
-  app.post('/api/options/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/options/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -517,7 +516,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete option
-  app.delete('/api/options/:type/:value', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/options/:type/:value', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -534,7 +533,7 @@ app.use(async (req, res, next) => {
 
   // --- DEPARTMENTS CRUD ---
   // Get departments
-  app.get('/api/departments', async (req, res) => {
+  app.get('/api/departments', authenticateRequest, async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -552,7 +551,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save/Upsert department
-  app.post('/api/departments', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/departments', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -573,7 +572,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete department
-  app.delete('/api/departments/:id', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/departments/:id', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -586,7 +585,7 @@ app.use(async (req, res, next) => {
   });
 
   // Departments sync
-  app.post('/api/departments/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/departments/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -628,7 +627,7 @@ app.use(async (req, res, next) => {
 
   // --- HIERARCHIES CRUD ---
   // Get hierarchies
-  app.get('/api/hierarchies', async (req, res) => {
+  app.get('/api/hierarchies', authenticateRequest, async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -655,7 +654,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save hierarchy
-  app.post('/api/hierarchies', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/hierarchies', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -678,7 +677,7 @@ app.use(async (req, res, next) => {
   });
 
   // Hierarchies sync
-  app.post('/api/hierarchies/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/hierarchies/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -729,7 +728,7 @@ app.use(async (req, res, next) => {
 
   // --- ROLES/PERMISSIONS CRUD ---
   // Get all roles
-  app.get('/api/roles', async (req, res) => {
+  app.get('/api/roles', authenticateRequest, async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -764,7 +763,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save/Upsert role
-  app.post('/api/roles', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/roles', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -791,7 +790,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete role
-  app.delete('/api/roles/:id', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/roles/:id', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -804,7 +803,7 @@ app.use(async (req, res, next) => {
   });
 
   // Roles sync
-  app.post('/api/roles/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/roles/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -869,7 +868,7 @@ app.use(async (req, res, next) => {
 
   // --- TEAMS CRUD ---
   // Get all teams
-  app.get('/api/teams', async (req, res) => {
+  app.get('/api/teams', authenticateRequest, async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json([]);
     try {
@@ -897,7 +896,7 @@ app.use(async (req, res, next) => {
   });
 
   // Save/Upsert team
-  app.post('/api/teams', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/teams', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -923,7 +922,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete team
-  app.delete('/api/teams/:id', requireRole('ADMIN'), async (req, res) => {
+  app.delete('/api/teams/:id', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -936,7 +935,7 @@ app.use(async (req, res, next) => {
   });
 
   // Teams sync
-  app.post('/api/teams/sync', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/teams/sync', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true, processed: 0 });
     try {
@@ -993,7 +992,7 @@ app.use(async (req, res, next) => {
 
   // --- NOTIFICATIONS CRUD ---
   // Get all notifications for a specific user
-  app.get('/api/notifications/users/:userId', async (req: AuthenticatedRequest, res) => {
+  app.get('/api/notifications/users/:userId', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     if (req.user?.role?.toUpperCase() !== 'ADMIN' && req.user?.employeeId !== req.params.userId) {
       return res.status(403).json({ error: 'You can only view your own notifications.' });
     }
@@ -1021,7 +1020,7 @@ app.use(async (req, res, next) => {
   });
 
   // Create notifications
-  app.post('/api/notifications', requireRole('ADMIN'), async (req, res) => {
+  app.post('/api/notifications', authenticateRequest, requireRole('ADMIN'), async (req, res) => {
     const pool = getPool();
     if (!pool) return res.json(req.body);
     try {
@@ -1046,7 +1045,7 @@ app.use(async (req, res, next) => {
   });
 
   // Mark specific notification as read
-  app.post('/api/notifications/:id/read', async (req: AuthenticatedRequest, res) => {
+  app.post('/api/notifications/:id/read', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     const pool = getPool();
     if (!pool) return res.json({ success: true });
     try {
@@ -1063,7 +1062,7 @@ app.use(async (req, res, next) => {
   });
 
   // Mark all notifications for user as read
-  app.post('/api/notifications/users/:userId/read-all', async (req: AuthenticatedRequest, res) => {
+  app.post('/api/notifications/users/:userId/read-all', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     if (req.user?.role?.toUpperCase() !== 'ADMIN' && req.user?.employeeId !== req.params.userId) {
       return res.status(403).json({ error: 'You can only update your own notifications.' });
     }
@@ -1079,7 +1078,7 @@ app.use(async (req, res, next) => {
   });
 
   // Delete all notifications for user
-  app.delete('/api/notifications/users/:userId', async (req: AuthenticatedRequest, res) => {
+  app.delete('/api/notifications/users/:userId', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     if (req.user?.role?.toUpperCase() !== 'ADMIN' && req.user?.employeeId !== req.params.userId) {
       return res.status(403).json({ error: 'You can only delete your own notifications.' });
     }

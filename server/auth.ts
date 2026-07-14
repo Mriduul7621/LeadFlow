@@ -346,7 +346,7 @@ export function registerAuthRoutes(app: Express) {
     }
   });
 
-  app.get('/api/auth/me', (req: AuthenticatedRequest, res) => {
+  app.get('/api/auth/me', authenticateRequest, (req: AuthenticatedRequest, res) => {
     const token = getToken(req);
     if (!token) {
       return res.status(401).json({ error: 'Not signed in.' });
@@ -368,7 +368,7 @@ export function registerAuthRoutes(app: Express) {
     res.json({ success: true });
   });
 
-  app.post('/api/auth/validate-password', async (req: AuthenticatedRequest, res) => {
+  app.post('/api/auth/validate-password', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     try {
       const parsed = z.object({ password: z.string().min(5) }).safeParse(req.body);
       if (!parsed.success) {
@@ -399,7 +399,7 @@ export function registerAuthRoutes(app: Express) {
     }
   });
 
-  app.post('/api/auth/verify-password', async (req: AuthenticatedRequest, res) => {
+  app.post('/api/auth/verify-password', authenticateRequest, async (req: AuthenticatedRequest, res) => {
     try {
       const parsed = passwordChangeSchema.safeParse(req.body);
       if (!parsed.success) {
